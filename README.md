@@ -93,4 +93,58 @@ Aplikasi akan berjalan di port `3100`.
 
 ---
 *Dibuat berdasarkan spesifikasi PRD v1.3*
-# AI-ConvExtract
+
+## Integrasi dengan n8n (Workflow Automation)
+
+Microservice ini sangat cocok digabungkan dengan **n8n** (seperti yang terlihat pada arsitektur workflow di atas). Anda bisa menggunakan Node `HTTP Request` untuk memanggil API AI-ConvExtract.
+
+### Contoh JSON Node n8n (HTTP Request)
+
+Copy JSON di bawah ini dan paste langsung ke canvas n8n Anda untuk membuat HTTP Request Node yang sudah terkonfigurasi ke API ini:
+
+```json
+{
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.16.19.235:3100/api/v1/extract",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "ai-converter-secret-key-123"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"url\": \"{{ $json.url }}\"\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Extract AI URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        820,
+        300
+      ]
+    }
+  ],
+  "connections": {}
+}
+```
+
+**Alur Rekomendasi (Sesuai Gambar):**
+1. **Trigger:** `Execute workflow` / Jadwal.
+2. **Data Source:** Baca link (URL) percakapan AI dari Google Sheets / Database.
+3. **Filter (If):** Cek apakah URL valid.
+4. **Ekstraksi (HTTP Request):** Kirim POST Request ke AI-ConvExtract (seperti JSON di atas).
+5. **AI Agent Processing (Groq/Llama):** Gunakan hasil teks ekstrak untuk diringkas/dianalisa oleh AI Agent.
+6. **Save Result:** Update atau tambah baris di Google Sheets dengan hasil akhir.
