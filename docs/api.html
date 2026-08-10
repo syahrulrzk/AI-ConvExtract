@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Conversation Extractor — API Docs</title>
+  <meta name="description" content="Complete API documentation for AI Conversation Extractor. Extract ChatGPT, Claude, and Gemini conversations via REST API." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #0b0d12;
+      --bg-card:   #111520;
+      --bg-hover:  #161b2e;
+      --border:    rgba(99,115,177,0.18);
+      --border-glow: rgba(99,115,255,0.4);
+      --text:      #e8eaf6;
+      --text-muted:#8892b0;
+      --text-dim:  #4a5578;
+      --accent:    #7c83ff;
+      --accent2:   #a78bfa;
+      --green:     #34d399;
+      --red:       #f87171;
+      --yellow:    #fbbf24;
+      --blue:      #60a5fa;
+      --gradient:  linear-gradient(135deg, #7c83ff 0%, #a78bfa 50%, #f472b6 100%);
+      --radius:    12px;
+      --radius-sm: 6px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+    .ambient {
+      position: fixed; border-radius: 50%; filter: blur(120px);
+      pointer-events: none; z-index: 0;
+    }
+    .ambient-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(124,131,255,0.08) 0%, transparent 70%);
+      top: -200px; left: -200px;
+    }
+    .ambient-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%);
+      bottom: -100px; right: -100px;
+    }
+    .page-wrap { position: relative; z-index: 1; display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 268px; flex-shrink: 0; position: sticky; top: 0;
+      height: 100vh; overflow-y: auto; padding: 32px 0;
+      border-right: 1px solid var(--border);
+      background: rgba(11,13,18,0.96); backdrop-filter: blur(20px);
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 24px 28px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+    }
+    .logo-icon {
+      width: 38px; height: 38px; background: var(--gradient); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+      box-shadow: 0 4px 20px rgba(124,131,255,0.35);
+    }
+    .logo-text { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo-sub  { font-size: 11px; color: var(--text-muted); }
+    .sidebar-section { margin-bottom: 10px; }
+    .sidebar-section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--text-dim); padding: 10px 24px 4px;
+    }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 10px; padding: 8px 24px;
+      font-size: 13.5px; color: var(--text-muted); text-decoration: none;
+      transition: all 0.2s; border-left: 2px solid transparent;
+    }
+    .sidebar-link:hover { color: var(--text); background: rgba(124,131,255,0.06); border-left-color: var(--accent); }
+    .sidebar-link.active { color: var(--accent); background: rgba(124,131,255,0.08); border-left-color: var(--accent); font-weight: 500; }
+    .mbadge {
+      font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+      padding: 2px 6px; border-radius: 4px; letter-spacing: 0.3px;
+    }
+    .mbadge-get  { background: rgba(52,211,153,0.15); color: var(--green); }
+    .mbadge-post { background: rgba(124,131,255,0.15); color: var(--accent); }
+
+    /* Main */
+    .main { flex: 1; padding: 48px 56px; max-width: 920px; }
+
+    /* Hero */
+    .hero { margin-bottom: 64px; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+      font-weight: 600; color: var(--accent);
+      background: rgba(124,131,255,0.1); border: 1px solid rgba(124,131,255,0.25);
+      padding: 4px 14px; border-radius: 100px; margin-bottom: 20px; letter-spacing: 0.3px;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px; background: var(--green); border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.5; transform: scale(0.85); }
+    }
+    .hero h1 {
+      font-size: 46px; font-weight: 800; letter-spacing: -1.8px; line-height: 1.12;
+      background: var(--gradient); -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 18px;
+    }
+    .hero p { font-size: 17px; color: var(--text-muted); max-width: 600px; line-height: 1.75; }
+    .hero-meta { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 28px; }
+    .hero-meta-item { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-muted); }
+    .hero-meta-item strong { color: var(--text); }
+
+    /* Section */
+    section { margin-bottom: 72px; scroll-margin-top: 32px; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .section-icon {
+      width: 40px; height: 40px; border-radius: 10px; display: flex;
+      align-items: center; justify-content: center; font-size: 20px;
+      background: rgba(124,131,255,0.1); border: 1px solid rgba(124,131,255,0.2);
+    }
+    h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+    h3 { font-size: 15.5px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+    p  { color: var(--text-muted); font-size: 14.5px; margin-bottom: 16px; }
+    code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      background: rgba(124,131,255,0.08); padding: 2px 6px; border-radius: 4px;
+      color: var(--accent2);
+    }
+
+    /* Card */
+    .card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; margin-bottom: 16px;
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+    .card:hover { border-color: var(--border-glow); box-shadow: 0 0 32px rgba(124,131,255,0.06); }
+
+    /* Endpoint accordion */
+    .endpoint-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+    .endpoint-card:hover { border-color: var(--border-glow); box-shadow: 0 0 40px rgba(124,131,255,0.07); }
+    .endpoint-header {
+      display: flex; align-items: center; gap: 14px; padding: 20px 24px;
+      cursor: pointer; user-select: none; border-bottom: 1px solid transparent;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .endpoint-card.open .endpoint-header { border-bottom-color: var(--border); background: rgba(124,131,255,0.04); }
+    .endpoint-header:hover { background: var(--bg-hover); }
+    .method-badge {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+      padding: 4px 10px; border-radius: 6px; min-width: 56px; text-align: center; letter-spacing: 0.5px;
+    }
+    .method-get  { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.25); }
+    .method-post { background: rgba(124,131,255,0.12); color: var(--accent); border: 1px solid rgba(124,131,255,0.25); }
+    .endpoint-path { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 500; color: var(--text); flex: 1; }
+    .endpoint-desc { font-size: 13px; color: var(--text-muted); }
+    .endpoint-toggle { color: var(--text-dim); transition: transform 0.25s; font-size: 20px; margin-left: auto; }
+    .endpoint-card.open .endpoint-toggle { transform: rotate(180deg); }
+    .endpoint-body { display: none; padding: 28px; gap: 28px; flex-direction: column; }
+    .endpoint-card.open .endpoint-body { display: flex; }
+
+    /* Code block */
+    .code-block {
+      background: #080a10; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); overflow: hidden;
+    }
+    .code-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+    }
+    .code-lang {
+      font-size: 11px; font-weight: 600; color: var(--text-dim);
+      letter-spacing: 0.8px; text-transform: uppercase;
+    }
+    .copy-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      font-size: 12px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+      font-family: 'Inter', sans-serif; transition: all 0.2s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.copied { border-color: var(--green); color: var(--green); }
+    pre {
+      padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; line-height: 1.75; color: #b0bec5;
+    }
+    pre::-webkit-scrollbar { height: 4px; }
+    pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* JSON syntax */
+    .jk { color: #a78bfa; }
+    .js { color: #34d399; }
+    .jn { color: #fbbf24; }
+    .jb { color: #60a5fa; }
+    .jp { color: #475569; }
+    .jc { color: #4a5578; font-style: italic; }
+    .kh { color: #7c83ff; font-weight: 600; }
+    .ku { color: #34d399; }
+    .kd { color: #fbbf24; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th {
+      text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600;
+      letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 12px 16px; border-bottom: 1px solid rgba(99,115,177,0.08); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(124,131,255,0.03); }
+    .td-k { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--accent2); font-weight: 500; }
+    .td-t { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--yellow); }
+    .req-y { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(248,113,113,0.12); color: var(--red); }
+    .req-n { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(148,163,184,0.1); color: var(--text-dim); }
+
+    /* Platform grid */
+    .platform-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 8px; }
+    .platform-card {
+      background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px; display: flex; align-items: center; gap: 12px;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .platform-card:hover { border-color: var(--border-glow); transform: translateY(-2px); }
+    .platform-emoji { font-size: 26px; }
+    .platform-name { font-size: 14px; font-weight: 600; }
+    .ps-ok   { font-size: 11px; font-weight: 600; color: var(--green); margin-top: 2px; }
+    .ps-soon { font-size: 11px; font-weight: 600; color: var(--text-dim); margin-top: 2px; }
+
+    /* Quick start steps */
+    .qs-step { display: flex; gap: 16px; margin-bottom: 24px; }
+    .qs-num {
+      width: 30px; height: 30px; min-width: 30px;
+      background: var(--gradient); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; margin-top: 1px;
+    }
+    .qs-content h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .qs-content p  { font-size: 13.5px; color: var(--text-muted); margin: 0; }
+
+    /* Alert */
+    .alert {
+      display: flex; gap: 12px; padding: 14px 18px; border-radius: var(--radius-sm);
+      font-size: 13.5px; margin-bottom: 16px;
+    }
+    .alert-info    { background: rgba(96,165,250,0.07); border: 1px solid rgba(96,165,250,0.2); color: #93c5fd; }
+    .alert-warning { background: rgba(251,191,36,0.07); border: 1px solid rgba(251,191,36,0.2); color: #fde68a; }
+    .alert-icon    { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+
+    /* Base URL */
+    .base-url-box {
+      background: rgba(124,131,255,0.06); border: 1px solid rgba(124,131,255,0.2);
+      border-radius: var(--radius-sm); padding: 14px 20px;
+      font-family: 'JetBrains Mono', monospace; font-size: 15px; color: var(--accent);
+      display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+    }
+    .bul { font-size: 11px; font-weight: 600; color: var(--text-dim); letter-spacing: 0.8px; text-transform: uppercase; }
+
+    /* Error status tags */
+    .etag {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+      padding: 3px 10px; border-radius: 5px; white-space: nowrap; display: inline-block;
+    }
+    .e2xx { background: rgba(52,211,153,0.1);  color: var(--green);  border: 1px solid rgba(52,211,153,0.2); }
+    .e4xx { background: rgba(251,191,36,0.1);  color: var(--yellow); border: 1px solid rgba(251,191,36,0.2); }
+    .e5xx { background: rgba(248,113,113,0.1); color: var(--red);    border: 1px solid rgba(248,113,113,0.2); }
+
+    /* Code tabs */
+    .tab-bar { display: flex; gap: 4px; margin-bottom: -1px; }
+    .tab-btn {
+      padding: 7px 16px; font-size: 12.5px; font-weight: 500; border: 1px solid var(--border);
+      border-bottom: none; border-radius: 6px 6px 0 0; background: var(--bg);
+      color: var(--text-muted); cursor: pointer; font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+    .tab-btn.active { background: #080a10; color: var(--text); border-color: var(--border); }
+    .tab-btn:hover:not(.active) { color: var(--text); background: var(--bg-hover); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    /* Scroll top */
+    #scroll-top {
+      position: fixed; bottom: 32px; right: 32px;
+      width: 42px; height: 42px; background: var(--gradient);
+      border: none; border-radius: 50%; cursor: pointer;
+      display: none; align-items: center; justify-content: center;
+      font-size: 18px; box-shadow: 0 4px 20px rgba(124,131,255,0.4);
+      z-index: 100; transition: transform 0.2s; color: white;
+    }
+    #scroll-top:hover { transform: translateY(-3px); }
+    #scroll-top.visible { display: flex; }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .hero    { animation: fadeUp 0.4s ease both; }
+    section  { animation: fadeUp 0.4s ease both; }
+
+    /* ── Mobile top navbar ── */
+    .mobile-topbar {
+      display: none;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      height: 56px;
+      background: rgba(11,13,18,0.97);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      gap: 12px;
+    }
+    .topbar-brand {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none; color: var(--text);
+    }
+    .topbar-logo {
+      width: 32px; height: 32px; background: var(--gradient); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .topbar-title { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+    .topbar-actions { display: flex; align-items: center; gap: 8px; }
+    .home-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; font-size: 12.5px; font-weight: 600;
+      color: var(--accent); background: rgba(124,131,255,0.1);
+      border: 1px solid rgba(124,131,255,0.25); border-radius: 999px;
+      text-decoration: none; transition: background 0.2s, border-color 0.2s;
+    }
+    .home-btn:hover { background: rgba(124,131,255,0.18); border-color: rgba(124,131,255,0.5); }
+    .hamburger-btn {
+      width: 36px; height: 36px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04); border-radius: 8px;
+      cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 5px;
+      transition: background 0.2s;
+    }
+    .hamburger-btn:hover { background: rgba(124,131,255,0.1); }
+    .hamburger-btn span {
+      display: block; width: 18px; height: 2px;
+      background: var(--text-muted); border-radius: 2px;
+      transition: all 0.25s;
+    }
+    .hamburger-btn.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+    .hamburger-btn.open span:nth-child(2) { opacity: 0; }
+    .hamburger-btn.open span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+    /* ── Mobile drawer overlay ── */
+    .drawer-overlay {
+      display: none;
+      position: fixed; inset: 0; z-index: 150;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+    }
+    .drawer-overlay.open { display: block; }
+
+    /* Sidebar as drawer on mobile */
+    @media (max-width: 860px) {
+      .mobile-topbar { display: flex; }
+      .page-wrap { flex-direction: column; }
+
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0;
+        height: 100vh;
+        width: 280px;
+        z-index: 160;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .sidebar.open { transform: translateX(0); }
+
+      .main {
+        padding: 28px 20px;
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .main { padding: 20px 16px; }
+      .hero h1 { font-size: 30px; letter-spacing: -1px; }
+      .hero p  { font-size: 15px; }
+      .hero-meta { gap: 14px; }
+      .hero-meta-item { font-size: 12.5px; }
+      section { margin-bottom: 48px; }
+
+      .endpoint-header { padding: 16px; gap: 10px; }
+      .endpoint-path { font-size: 13px; }
+      .endpoint-desc { display: none; }
+      .endpoint-body { padding: 16px; gap: 20px; }
+
+      .base-url-box { font-size: 12.5px; padding: 12px 14px; flex-wrap: wrap; }
+      pre { font-size: 12px; padding: 14px; }
+      .code-header { padding: 8px 12px; }
+
+      table { font-size: 12.5px; }
+      th, td { padding: 10px 12px; }
+
+      .tab-btn { padding: 6px 10px; font-size: 12px; }
+
+      .platform-grid { grid-template-columns: repeat(2, 1fr); }
+
+      h2 { font-size: 18px; }
+      h3 { font-size: 14px; }
+
+      #scroll-top { bottom: 20px; right: 16px; width: 38px; height: 38px; font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Mobile drawer overlay -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+  <!-- Mobile sticky top bar -->
+  <header class="mobile-topbar">
+    <a class="topbar-brand" href="/">
+      <div class="topbar-logo">🤖</div>
+      <span class="topbar-title">AI Extractor</span>
+    </a>
+    <div class="topbar-actions">
+      <a class="home-btn" href="/">🏠 Home</a>
+      <button class="hamburger-btn" id="hamburger" onclick="toggleDrawer()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="ambient ambient-1"></div>
+  <div class="ambient ambient-2"></div>
+  <div class="page-wrap">
+
+    <!-- Sidebar (desktop sticky / mobile drawer) -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🤖</div>
+        <div>
+          <div class="logo-text">AI Extractor</div>
+          <div class="logo-sub">API Reference v1.0.0</div>
+        </div>
+      </div>
+
+      <!-- Home button inside sidebar (always visible) -->
+      <div style="padding: 0 16px 16px;">
+        <a href="/" style="
+          display: flex; align-items: center; gap: 8px;
+          padding: 8px 14px; border-radius: 8px;
+          background: rgba(124,131,255,0.08); border: 1px solid rgba(124,131,255,0.2);
+          color: var(--accent); font-size: 13px; font-weight: 600;
+          text-decoration: none; transition: background 0.2s;
+        " onmouseover="this.style.background='rgba(124,131,255,0.16)'" onmouseout="this.style.background='rgba(124,131,255,0.08)'">
+          🏠 Back to Dashboard
+        </a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Overview</div>
+        <a class="sidebar-link active" href="#introduction" onclick="closeDrawer()">📖 Introduction</a>
+        <a class="sidebar-link" href="#quickstart" onclick="closeDrawer()">⚡ Quick Start</a>
+        <a class="sidebar-link" href="#authentication" onclick="closeDrawer()">🔑 Authentication</a>
+        <a class="sidebar-link" href="#platforms" onclick="closeDrawer()">🌐 Platforms</a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Endpoints</div>
+        <a class="sidebar-link" href="#ep-health" onclick="closeDrawer()">
+          <span class="mbadge mbadge-get">GET</span>/health
+        </a>
+        <a class="sidebar-link" href="#ep-version" onclick="closeDrawer()">
+          <span class="mbadge mbadge-get">GET</span>/version
+        </a>
+        <a class="sidebar-link" href="#ep-extract" onclick="closeDrawer()">
+          <span class="mbadge mbadge-post">POST</span>/extract
+        </a>
+        <a class="sidebar-link" href="#ep-batch" onclick="closeDrawer()">
+          <span class="mbadge mbadge-post">POST</span>/extract/batch
+        </a>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-section-label">Reference</div>
+        <a class="sidebar-link" href="#response-schema" onclick="closeDrawer()">📦 Response Schema</a>
+        <a class="sidebar-link" href="#errors" onclick="closeDrawer()">⚠️ Error Codes</a>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- Hero -->
+      <div class="hero" id="introduction">
+        <div class="hero-badge">
+          <span class="dot"></span>
+          v1.0.0 · Live
+        </div>
+        <h1>API Documentation</h1>
+        <p>
+          Extract AI conversations from ChatGPT, Claude &amp; Gemini share links.
+          Get fully structured JSON — messages, statistics, platform metadata — all in one shot.
+        </p>
+        <div class="hero-meta">
+          <div class="hero-meta-item">🚀 <strong>Fastify</strong>&nbsp; REST API</div>
+          <div class="hero-meta-item">🎭 <strong>Playwright</strong>&nbsp; Browser Engine</div>
+          <div class="hero-meta-item">⚡ <strong>&lt; 10s</strong>&nbsp; Response Time</div>
+          <div class="hero-meta-item">🔒 <strong>API Key</strong>&nbsp; Auth</div>
+        </div>
+      </div>
+
+      <!-- Base URL -->
+      <section id="base-url">
+        <div class="section-header">
+          <div class="section-icon">🌍</div>
+          <h2>Base URL</h2>
+        </div>
+        <div class="base-url-box">
+          <span class="bul">Server</span>
+          <span>http://localhost:3100</span>
+        </div>
+        <div class="base-url-box" style="border-color:rgba(52,211,153,0.2);background:rgba(52,211,153,0.04);">
+          <span class="bul" style="color:var(--green);">API</span>
+          <span style="color:var(--green);">http://localhost:3100/api/v1</span>
+        </div>
+        <div class="alert alert-info">
+          <span class="alert-icon">ℹ️</span>
+          <span>Replace <code>localhost:3100</code> with your server IP or domain in production. Docker default port is also <code>3100</code>.</span>
+        </div>
+      </section>
+
+      <!-- Quick Start -->
+      <section id="quickstart">
+        <div class="section-header">
+          <div class="section-icon">⚡</div>
+          <h2>Quick Start</h2>
+        </div>
+        <div class="qs-step">
+          <div class="qs-num">1</div>
+          <div class="qs-content">
+            <h4>Get your API Key</h4>
+            <p>The API key is set via the <code>API_KEY</code> variable in your <code>.env</code> file. Default: <code>ai-converter-secret-key-123</code></p>
+          </div>
+        </div>
+        <div class="qs-step">
+          <div class="qs-num">2</div>
+          <div class="qs-content">
+            <h4>Copy a share link</h4>
+            <p>Get a public share URL from ChatGPT, Claude, or Gemini. These are the links generated when you share a conversation.</p>
+          </div>
+        </div>
+        <div class="qs-step">
+          <div class="qs-num">3</div>
+          <div class="qs-content">
+            <h4>Make your first request</h4>
+            <p>POST the URL with your API key — receive structured JSON back in seconds.</p>
+          </div>
+        </div>
+        <div class="code-block">
+          <div class="code-header">
+            <span class="code-lang">cURL — Hello World</span>
+            <button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button>
+          </div>
+          <pre>curl -X POST <span class="ku">http://localhost:3100/api/v1/extract</span> \
+  -H <span class="kd">"Content-Type: application/json"</span> \
+  -H <span class="kd">"x-api-key: ai-converter-secret-key-123"</span> \
+  -d <span class="js">'{"url": "https://chatgpt.com/share/xxxxxx"}'</span></pre>
+        </div>
+      </section>
+
+      <!-- Authentication -->
+      <section id="authentication">
+        <div class="section-header">
+          <div class="section-icon">🔑</div>
+          <h2>Authentication</h2>
+        </div>
+        <p>All <code>/api/v1/*</code> endpoints require authentication via the <code>x-api-key</code> header. Public endpoints (<code>/health</code>, <code>/version</code>) do not require a key.</p>
+        <div class="card" style="padding:0;">
+          <table>
+            <thead><tr><th>Header</th><th>Value</th><th>Required</th></tr></thead>
+            <tbody>
+              <tr>
+                <td class="td-k">x-api-key</td>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-muted);">your_api_key_here</td>
+                <td><span class="req-y">Required</span></td>
+              </tr>
+              <tr>
+                <td class="td-k">Content-Type</td>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-muted);">application/json</td>
+                <td><span class="req-y">Required</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="alert alert-warning">
+          <span class="alert-icon">⚠️</span>
+          <span>Missing or invalid API key returns <strong>401 Unauthorized</strong>. Do not expose your API key in frontend / client-side code.</span>
+        </div>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">401 Unauthorized Response</span></div>
+          <pre>{
+  <span class="jk">"success"</span><span class="jp">:</span> <span class="jb">false</span><span class="jp">,</span>
+  <span class="jk">"error"</span><span class="jp">:</span> {
+    <span class="jk">"code"</span><span class="jp">:</span>    <span class="js">"UNAUTHORIZED"</span><span class="jp">,</span>
+    <span class="jk">"message"</span><span class="jp">:</span> <span class="js">"Missing x-api-key header."</span>
+  }
+}</pre>
+        </div>
+      </section>
+
+      <!-- Platforms -->
+      <section id="platforms">
+        <div class="section-header">
+          <div class="section-icon">🌐</div>
+          <h2>Supported Platforms</h2>
+        </div>
+        <p>Platform is auto-detected from the URL hostname — no manual specification needed.</p>
+        <div class="platform-grid">
+          <div class="platform-card">
+            <div class="platform-emoji">🤖</div>
+            <div><div class="platform-name">ChatGPT</div><div class="ps-ok">✓ Supported</div></div>
+          </div>
+          <div class="platform-card">
+            <div class="platform-emoji">🧠</div>
+            <div><div class="platform-name">Claude</div><div class="ps-ok">✓ Supported</div></div>
+          </div>
+          <div class="platform-card">
+            <div class="platform-emoji">✨</div>
+            <div><div class="platform-name">Gemini</div><div class="ps-ok">✓ Supported</div></div>
+          </div>
+          <div class="platform-card" style="opacity:0.5;">
+            <div class="platform-emoji">𝕏</div>
+            <div><div class="platform-name">Grok</div><div class="ps-soon">⏳ Planned</div></div>
+          </div>
+          <div class="platform-card" style="opacity:0.5;">
+            <div class="platform-emoji">🔍</div>
+            <div><div class="platform-name">DeepSeek</div><div class="ps-soon">⏳ Planned</div></div>
+          </div>
+          <div class="platform-card" style="opacity:0.5;">
+            <div class="platform-emoji">🔵</div>
+            <div><div class="platform-name">Perplexity</div><div class="ps-soon">⏳ Planned</div></div>
+          </div>
+        </div>
+        <div style="margin-top:24px;">
+          <h3>URL Pattern Detection</h3>
+          <div class="card" style="padding:0;">
+            <table>
+              <thead><tr><th>Platform</th><th>URL Hostname Match</th><th>platform value</th></tr></thead>
+              <tbody>
+                <tr><td>ChatGPT</td><td class="td-k">chatgpt.com / openai.com</td><td class="td-t">"chatgpt"</td></tr>
+                <tr><td>Claude</td><td class="td-k">claude.ai / share.claude.ai</td><td class="td-t">"claude"</td></tr>
+                <tr><td>Gemini</td><td class="td-k">gemini.google.com / share.gemini.google</td><td class="td-t">"gemini"</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <hr />
+
+      <!-- ════════════ ENDPOINTS ════════════ -->
+      <section>
+        <div class="section-header">
+          <div class="section-icon">📡</div>
+          <h2>Endpoints</h2>
+        </div>
+
+        <!-- GET /health -->
+        <div class="endpoint-card" id="ep-health">
+          <div class="endpoint-header" onclick="toggleCard(this)">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/health</span>
+            <span class="endpoint-desc">Server Health Check</span>
+            <span class="endpoint-toggle">⌄</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Check if the server is alive. No authentication required. Ideal for Docker health probes and uptime monitoring.</p>
+            <div>
+              <h3>Response — 200 OK</h3>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">JSON</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>{
+  <span class="jk">"status"</span><span class="jp">:</span>    <span class="js">"ok"</span><span class="jp">,</span>
+  <span class="jk">"timestamp"</span><span class="jp">:</span> <span class="js">"2026-08-10T08:07:00.000Z"</span>
+}</pre>
+              </div>
+            </div>
+            <div>
+              <h3>Example</h3>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">cURL</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>curl <span class="ku">http://localhost:3100/health</span></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GET /version -->
+        <div class="endpoint-card" id="ep-version">
+          <div class="endpoint-header" onclick="toggleCard(this)">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/version</span>
+            <span class="endpoint-desc">Application Version</span>
+            <span class="endpoint-toggle">⌄</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Returns the current running version of the application. No authentication required.</p>
+            <div>
+              <h3>Response — 200 OK</h3>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">JSON</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>{
+  <span class="jk">"version"</span><span class="jp">:</span> <span class="js">"1.0.0"</span>
+}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POST /api/v1/extract -->
+        <div class="endpoint-card open" id="ep-extract">
+          <div class="endpoint-header" onclick="toggleCard(this)">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/v1/extract</span>
+            <span class="endpoint-desc">Extract Single Conversation</span>
+            <span class="endpoint-toggle">⌄</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Extract a single AI conversation from a public share URL. The API detects the platform, spins up a headless browser via Playwright, waits for the page to fully render, then returns parsed conversation data as structured JSON.</p>
+            <div class="alert alert-warning">
+              <span class="alert-icon">⚠️</span>
+              <span>Uses browser automation — response time is 2–8 seconds depending on the AI platform's page load speed.</span>
+            </div>
+
+            <div>
+              <h3>Request Headers</h3>
+              <div class="card" style="padding:0;">
+                <table>
+                  <thead><tr><th>Header</th><th>Value</th><th>Required</th></tr></thead>
+                  <tbody>
+                    <tr><td class="td-k">x-api-key</td><td class="td-t">your_api_key</td><td><span class="req-y">Required</span></td></tr>
+                    <tr><td class="td-k">Content-Type</td><td class="td-t">application/json</td><td><span class="req-y">Required</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h3>Request Body</h3>
+              <div class="card" style="padding:0;">
+                <table>
+                  <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td class="td-k">url</td>
+                      <td class="td-t">string (URL)</td>
+                      <td><span class="req-y">Required</span></td>
+                      <td style="color:var(--text-muted);font-size:13px;">Valid public share URL from ChatGPT, Claude, or Gemini</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">JSON — Request</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>{
+  <span class="jk">"url"</span><span class="jp">:</span> <span class="js">"https://chatgpt.com/share/xxxxxx-example-id"</span>
+}</pre>
+              </div>
+            </div>
+
+            <div>
+              <h3>Response — 200 Success</h3>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">JSON — Success</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>{
+  <span class="jk">"success"</span><span class="jp">:</span>        <span class="jb">true</span><span class="jp">,</span>
+  <span class="jk">"url"</span><span class="jp">:</span>           <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
+  <span class="jk">"platform"</span><span class="jp">:</span>     <span class="js">"chatgpt"</span><span class="jp">,</span>
+  <span class="jk">"title"</span><span class="jp">:</span>        <span class="js">"My AI Conversation"</span><span class="jp">,</span>
+  <span class="jk">"messages"</span><span class="jp">:</span> [
+    { <span class="jk">"role"</span><span class="jp">:</span> <span class="js">"user"</span><span class="jp">,</span>      <span class="jk">"content"</span><span class="jp">:</span> <span class="js">"Hello! Explain quantum computing."</span> }<span class="jp">,</span>
+    { <span class="jk">"role"</span><span class="jp">:</span> <span class="js">"assistant"</span><span class="jp">,</span> <span class="jk">"content"</span><span class="jp">:</span> <span class="js">"Quantum computing is a type of computing..."</span> }
+  ]<span class="jp">,</span>
+  <span class="jk">"promptCount"</span><span class="jp">:</span>    <span class="jn">1</span><span class="jp">,</span>
+  <span class="jk">"assistantCount"</span><span class="jp">:</span> <span class="jn">1</span><span class="jp">,</span>
+  <span class="jk">"totalMessages"</span><span class="jp">:</span>  <span class="jn">2</span><span class="jp">,</span>
+  <span class="jk">"summaryInput"</span><span class="jp">:</span>   <span class="js">"Hello! Explain quantum computing."</span><span class="jp">,</span>
+  <span class="jk">"wordCount"</span><span class="jp">:</span>     <span class="jn">120</span><span class="jp">,</span>
+  <span class="jk">"characterCount"</span><span class="jp">:</span> <span class="jn">840</span><span class="jp">,</span>
+  <span class="jk">"processingTime"</span><span class="jp">:</span> <span class="jn">2430</span>  <span class="jc">// milliseconds</span>
+}</pre>
+              </div>
+            </div>
+
+            <!-- Code tabs -->
+            <div>
+              <h3>Code Examples</h3>
+              <div class="tab-bar">
+                <button class="tab-btn active" onclick="switchTab(this,'extract','curl')">cURL</button>
+                <button class="tab-btn" onclick="switchTab(this,'extract','js')">JavaScript</button>
+                <button class="tab-btn" onclick="switchTab(this,'extract','python')">Python</button>
+              </div>
+              <div id="extract-curl" class="tab-content active">
+                <div class="code-block" style="border-radius:0 6px 6px 6px;">
+                  <div class="code-header"><span class="code-lang">cURL</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                  <pre>curl -X POST <span class="ku">http://localhost:3100/api/v1/extract</span> \
+  -H <span class="kd">"Content-Type: application/json"</span> \
+  -H <span class="kd">"x-api-key: ai-converter-secret-key-123"</span> \
+  -d <span class="js">'{"url": "https://chatgpt.com/share/xxxxxx"}'</span></pre>
+                </div>
+              </div>
+              <div id="extract-js" class="tab-content">
+                <div class="code-block" style="border-radius:0 6px 6px 6px;">
+                  <div class="code-header"><span class="code-lang">JavaScript (fetch)</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                  <pre><span class="kh">const</span> response = <span class="kh">await</span> fetch(<span class="js">'http://localhost:3100/api/v1/extract'</span>, {
+  method:  <span class="js">'POST'</span>,
+  headers: {
+    <span class="js">'Content-Type'</span>: <span class="js">'application/json'</span>,
+    <span class="js">'x-api-key'</span>:    <span class="js">'ai-converter-secret-key-123'</span>
+  },
+  body: JSON.stringify({ url: <span class="js">'https://chatgpt.com/share/xxxxxx'</span> })
+});
+
+<span class="kh">const</span> data = <span class="kh">await</span> response.json();
+console.log(data.messages);       <span class="jc">// array of {role, content}</span>
+console.log(data.promptCount);    <span class="jc">// number of user prompts</span>
+console.log(data.processingTime); <span class="jc">// ms taken</span></pre>
+                </div>
+              </div>
+              <div id="extract-python" class="tab-content">
+                <div class="code-block" style="border-radius:0 6px 6px 6px;">
+                  <div class="code-header"><span class="code-lang">Python (requests)</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                  <pre><span class="kh">import</span> requests
+
+resp = requests.post(
+    <span class="js">"http://localhost:3100/api/v1/extract"</span>,
+    headers={
+        <span class="js">"Content-Type"</span>: <span class="js">"application/json"</span>,
+        <span class="js">"x-api-key"</span>:    <span class="js">"ai-converter-secret-key-123"</span>
+    },
+    json={<span class="js">"url"</span>: <span class="js">"https://claude.ai/share/xxxxxx"</span>}
+)
+data = resp.json()
+<span class="kh">for</span> msg <span class="kh">in</span> data[<span class="js">"messages"</span>]:
+    <span class="kh">print</span>(<span class="js">f"[{msg['role']}] {msg['content'][:80]}..."</span>)</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POST /api/v1/extract/batch -->
+        <div class="endpoint-card" id="ep-batch">
+          <div class="endpoint-header" onclick="toggleCard(this)">
+            <span class="method-badge method-post">POST</span>
+            <span class="endpoint-path">/api/v1/extract/batch</span>
+            <span class="endpoint-desc">Batch Extract — up to 10 URLs</span>
+            <span class="endpoint-toggle">⌄</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Extract multiple conversations concurrently in a single request. All URLs are processed in parallel — total time equals the slowest individual URL.</p>
+            <div class="alert alert-info">
+              <span class="alert-icon">ℹ️</span>
+              <span>Max <strong>10 URLs</strong> per request. Failures are per-URL — one bad URL won't fail the whole batch.</span>
+            </div>
+
+            <div>
+              <h3>Request Body</h3>
+              <div class="card" style="padding:0;">
+                <table>
+                  <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td class="td-k">urls</td>
+                      <td class="td-t">string[]</td>
+                      <td><span class="req-y">Required</span></td>
+                      <td style="color:var(--text-muted);font-size:13px;">Array of share URLs, max 10</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">JSON — Request</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>{
+  <span class="jk">"urls"</span><span class="jp">:</span> [
+    <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
+    <span class="js">"https://claude.ai/share/yyyyyy"</span><span class="jp">,</span>
+    <span class="js">"https://gemini.google.com/share/zzzzzz"</span>
+  ]
+}</pre>
+              </div>
+            </div>
+
+            <div>
+              <h3>Response — 200 Success</h3>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">JSON — Batch Response</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>{
+  <span class="jk">"success"</span><span class="jp">:</span> <span class="jb">true</span><span class="jp">,</span>
+  <span class="jk">"total"</span><span class="jp">:</span>   <span class="jn">2</span><span class="jp">,</span>
+  <span class="jk">"results"</span><span class="jp">:</span> [
+    {
+      <span class="jk">"success"</span><span class="jp">:</span>        <span class="jb">true</span><span class="jp">,</span>
+      <span class="jk">"url"</span><span class="jp">:</span>           <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
+      <span class="jk">"platform"</span><span class="jp">:</span>     <span class="js">"chatgpt"</span><span class="jp">,</span>
+      <span class="jk">"title"</span><span class="jp">:</span>        <span class="js">"Conversation A"</span><span class="jp">,</span>
+      <span class="jk">"messages"</span><span class="jp">:</span>     [<span class="jc">/* ... */</span>]<span class="jp">,</span>
+      <span class="jk">"promptCount"</span><span class="jp">:</span>  <span class="jn">3</span><span class="jp">,</span>
+      <span class="jk">"totalMessages"</span><span class="jp">:</span> <span class="jn">6</span><span class="jp">,</span>
+      <span class="jk">"processingTime"</span><span class="jp">:</span> <span class="jn">3200</span>
+    }<span class="jp">,</span>
+    {
+      <span class="jk">"success"</span><span class="jp">:</span>  <span class="jb">false</span><span class="jp">,</span>
+      <span class="jk">"url"</span><span class="jp">:</span>      <span class="js">"https://claude.ai/share/yyyyyy"</span><span class="jp">,</span>
+      <span class="jk">"platform"</span><span class="jp">:</span> <span class="js">"claude"</span><span class="jp">,</span>
+      <span class="jk">"error"</span><span class="jp">:</span> {
+        <span class="jk">"code"</span><span class="jp">:</span>    <span class="js">"EXTRACTION_FAILED"</span><span class="jp">,</span>
+        <span class="jk">"message"</span><span class="jp">:</span> <span class="js">"Page not found"</span>
+      }
+    }
+  ]
+}</pre>
+              </div>
+            </div>
+
+            <!-- Batch Code tabs -->
+            <div>
+              <h3>Code Examples</h3>
+              <div class="tab-bar">
+                <button class="tab-btn active" onclick="switchTab(this,'batch','curl')">cURL</button>
+                <button class="tab-btn" onclick="switchTab(this,'batch','js')">JavaScript</button>
+                <button class="tab-btn" onclick="switchTab(this,'batch','python')">Python</button>
+              </div>
+              <div id="batch-curl" class="tab-content active">
+                <div class="code-block" style="border-radius:0 6px 6px 6px;">
+                  <div class="code-header"><span class="code-lang">cURL</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                  <pre>curl -X POST <span class="ku">http://localhost:3100/api/v1/extract/batch</span> \
+  -H <span class="kd">"Content-Type: application/json"</span> \
+  -H <span class="kd">"x-api-key: ai-converter-secret-key-123"</span> \
+  -d <span class="js">'{"urls":["https://chatgpt.com/share/xxx","https://claude.ai/share/yyy"]}'</span></pre>
+                </div>
+              </div>
+              <div id="batch-js" class="tab-content">
+                <div class="code-block" style="border-radius:0 6px 6px 6px;">
+                  <div class="code-header"><span class="code-lang">JavaScript (fetch)</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                  <pre><span class="kh">const</span> response = <span class="kh">await</span> fetch(<span class="js">'http://localhost:3100/api/v1/extract/batch'</span>, {
+  method:  <span class="js">'POST'</span>,
+  headers: {
+    <span class="js">'Content-Type'</span>: <span class="js">'application/json'</span>,
+    <span class="js">'x-api-key'</span>:    <span class="js">'ai-converter-secret-key-123'</span>
+  },
+  body: JSON.stringify({
+    urls: [
+      <span class="js">'https://chatgpt.com/share/xxxxxx'</span>,
+      <span class="js">'https://claude.ai/share/yyyyyy'</span>
+    ]
+  })
+});
+<span class="kh">const</span> { results } = <span class="kh">await</span> response.json();
+results.forEach(r => {
+  <span class="kh">if</span> (r.success) console.log(<span class="js">`✓ ${r.platform}: ${r.totalMessages} msgs`</span>);
+  <span class="kh">else</span>           console.error(<span class="js">`✗ ${r.url}: ${r.error.message}`</span>);
+});</pre>
+                </div>
+              </div>
+              <div id="batch-python" class="tab-content">
+                <div class="code-block" style="border-radius:0 6px 6px 6px;">
+                  <div class="code-header"><span class="code-lang">Python (requests)</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                  <pre><span class="kh">import</span> requests
+
+resp = requests.post(
+    <span class="js">"http://localhost:3100/api/v1/extract/batch"</span>,
+    headers={
+        <span class="js">"Content-Type"</span>: <span class="js">"application/json"</span>,
+        <span class="js">"x-api-key"</span>:    <span class="js">"ai-converter-secret-key-123"</span>
+    },
+    json={<span class="js">"urls"</span>: [
+        <span class="js">"https://chatgpt.com/share/xxx"</span>,
+        <span class="js">"https://claude.ai/share/yyy"</span>
+    ]}
+)
+<span class="kh">for</span> r <span class="kh">in</span> resp.json()[<span class="js">"results"</span>]:
+    status = <span class="js">"✓"</span> <span class="kh">if</span> r[<span class="js">"success"</span>] <span class="kh">else</span> <span class="js">"✗"</span>
+    <span class="kh">print</span>(<span class="js">f"{status} {r['platform']}: {r.get('totalMessages','error')}"</span>)</pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Response Schema -->
+      <section id="response-schema">
+        <div class="section-header">
+          <div class="section-icon">📦</div>
+          <h2>Response Schema</h2>
+        </div>
+        <p>All responses share a consistent structure. The <code>success</code> boolean always indicates request outcome.</p>
+
+        <h3 style="margin-bottom:12px;">Extract Response Fields</h3>
+        <div class="card" style="padding:0;">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="td-k">success</td><td class="td-t">boolean</td><td style="color:var(--text-muted);font-size:13px;"><code>true</code> on success</td></tr>
+              <tr><td class="td-k">url</td><td class="td-t">string</td><td style="color:var(--text-muted);font-size:13px;">The input URL that was extracted</td></tr>
+              <tr><td class="td-k">platform</td><td class="td-t">string</td><td style="color:var(--text-muted);font-size:13px;"><code>"chatgpt"</code> | <code>"claude"</code> | <code>"gemini"</code></td></tr>
+              <tr><td class="td-k">title</td><td class="td-t">string</td><td style="color:var(--text-muted);font-size:13px;">Conversation title from the page</td></tr>
+              <tr><td class="td-k">messages</td><td class="td-t">Message[]</td><td style="color:var(--text-muted);font-size:13px;">Array of message objects (see below)</td></tr>
+              <tr><td class="td-k">promptCount</td><td class="td-t">number</td><td style="color:var(--text-muted);font-size:13px;">Number of user messages</td></tr>
+              <tr><td class="td-k">assistantCount</td><td class="td-t">number</td><td style="color:var(--text-muted);font-size:13px;">Number of assistant replies</td></tr>
+              <tr><td class="td-k">totalMessages</td><td class="td-t">number</td><td style="color:var(--text-muted);font-size:13px;">Total message count</td></tr>
+              <tr><td class="td-k">summaryInput</td><td class="td-t">string</td><td style="color:var(--text-muted);font-size:13px;">Content of the first user message</td></tr>
+              <tr><td class="td-k">wordCount</td><td class="td-t">number</td><td style="color:var(--text-muted);font-size:13px;">Total word count across all messages</td></tr>
+              <tr><td class="td-k">characterCount</td><td class="td-t">number</td><td style="color:var(--text-muted);font-size:13px;">Total character count across all messages</td></tr>
+              <tr><td class="td-k">processingTime</td><td class="td-t">number (ms)</td><td style="color:var(--text-muted);font-size:13px;">Total processing time in milliseconds</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-top:24px;margin-bottom:12px;">Message Object</h3>
+        <div class="card" style="padding:0;">
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td class="td-k">role</td><td class="td-t">string</td><td style="color:var(--text-muted);font-size:13px;"><code>"user"</code> or <code>"assistant"</code></td></tr>
+              <tr><td class="td-k">content</td><td class="td-t">string</td><td style="color:var(--text-muted);font-size:13px;">Full text content of the message</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Error Codes -->
+      <section id="errors">
+        <div class="section-header">
+          <div class="section-icon">⚠️</div>
+          <h2>Error Codes</h2>
+        </div>
+        <p>Errors always return <code>success: false</code> with a structured <code>error</code> object containing a machine-readable <code>code</code> and a human-readable <code>message</code>.</p>
+        <div class="code-block" style="margin-bottom:24px;">
+          <div class="code-header"><span class="code-lang">JSON — Error Structure</span></div>
+          <pre>{
+  <span class="jk">"success"</span><span class="jp">:</span> <span class="jb">false</span><span class="jp">,</span>
+  <span class="jk">"error"</span><span class="jp">:</span> {
+    <span class="jk">"code"</span><span class="jp">:</span>    <span class="js">"ERROR_CODE"</span><span class="jp">,</span>
+    <span class="jk">"message"</span><span class="jp">:</span> <span class="js">"Human-readable description."</span>
+  }
+}</pre>
+        </div>
+        <div class="card" style="padding:0;">
+          <table>
+            <thead><tr><th>HTTP Status</th><th>Error Code</th><th>When It Occurs</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><span class="etag e2xx">200</span></td>
+                <td class="td-k">—</td>
+                <td style="color:var(--text-muted);font-size:13px;">Success. <code>success: true</code></td>
+              </tr>
+              <tr>
+                <td><span class="etag e4xx">400</span></td>
+                <td class="td-k">INVALID_REQUEST</td>
+                <td style="color:var(--text-muted);font-size:13px;">Body is malformed, <code>url</code> is missing or not a valid URL</td>
+              </tr>
+              <tr>
+                <td><span class="etag e4xx">400</span></td>
+                <td class="td-k">UNSUPPORTED_PLATFORM</td>
+                <td style="color:var(--text-muted);font-size:13px;">URL domain doesn't match any supported AI platform</td>
+              </tr>
+              <tr>
+                <td><span class="etag e4xx">401</span></td>
+                <td class="td-k">UNAUTHORIZED</td>
+                <td style="color:var(--text-muted);font-size:13px;">Missing or invalid <code>x-api-key</code> header</td>
+              </tr>
+              <tr>
+                <td><span class="etag e4xx">404</span></td>
+                <td class="td-k">—</td>
+                <td style="color:var(--text-muted);font-size:13px;">API route not found</td>
+              </tr>
+              <tr>
+                <td><span class="etag e5xx">500</span></td>
+                <td class="td-k">EXTRACTION_FAILED</td>
+                <td style="color:var(--text-muted);font-size:13px;">Browser automation error, page failed to load or parse</td>
+              </tr>
+              <tr>
+                <td><span class="etag e5xx">500</span></td>
+                <td class="td-k">INTERNAL_SERVER_ERROR</td>
+                <td style="color:var(--text-muted);font-size:13px;">Unexpected server-side exception</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer style="margin-top:80px;padding-top:32px;border-top:1px solid var(--border);text-align:center;color:var(--text-dim);font-size:13px;">
+        <div style="margin-bottom:8px;">
+          <span style="background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700;">
+            AI Conversation Extractor
+          </span>
+          &nbsp;·&nbsp; API v1.0.0
+        </div>
+        <div>
+          Built with Fastify + Playwright &nbsp;·&nbsp;
+          <a href="/" style="color:var(--accent);text-decoration:none;">← Back to Dashboard</a>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <button id="scroll-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">↑</button>
+
+  <script>
+    function toggleCard(header) {
+      header.parentElement.classList.toggle('open');
+    }
+
+    function copyBlock(btn) {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      navigator.clipboard.writeText(pre.innerText || pre.textContent).then(() => {
+        btn.textContent = '✅ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    function switchTab(btn, group, tab) {
+      // deactivate all tabs in this group
+      const parent = btn.closest('.endpoint-body') || btn.closest('.main');
+      btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // hide all tab-content in this group
+      const allContents = document.querySelectorAll(`[id^="${group}-"]`);
+      allContents.forEach(c => c.classList.remove('active'));
+      document.getElementById(`${group}-${tab}`).classList.add('active');
+    }
+
+    // Scroll-to-top
+    const scrollBtn = document.getElementById('scroll-top');
+    window.addEventListener('scroll', () => {
+      scrollBtn.classList.toggle('visible', window.scrollY > 300);
+    });
+
+    // Active sidebar link on scroll
+    const allSections = document.querySelectorAll('section[id], div.hero[id], div.endpoint-card[id]');
+    const sideLinks   = document.querySelectorAll('.sidebar-link');
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          sideLinks.forEach(l => l.classList.remove('active'));
+          const a = document.querySelector(`.sidebar-link[href="#${entry.target.id}"]`);
+          if (a) a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0% -65% 0%', threshold: 0 });
+    allSections.forEach(s => obs.observe(s));
+
+    // Mobile drawer
+    const sidebar  = document.getElementById('sidebar');
+    const overlay  = document.getElementById('drawer-overlay');
+    const hamburger = document.getElementById('hamburger');
+
+    function openDrawer() {
+      sidebar.classList.add('open');
+      overlay.classList.add('open');
+      hamburger.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    function closeDrawer() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+      hamburger.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function toggleDrawer() {
+      sidebar.classList.contains('open') ? closeDrawer() : openDrawer();
+    }
+
+    // Close drawer on ESC
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+  </script>
+</body>
+</html>
