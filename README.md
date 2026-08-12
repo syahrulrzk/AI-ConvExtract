@@ -87,26 +87,42 @@ Aplikasi dan Dashboard kini bisa diakses melalui `http://localhost:3100` (atau I
 
 Aplikasi siap di-deploy bersama Redis menggunakan Docker Compose.
 
-### Opsi 1: Build langsung dari source (local / server pertama kali)
+### Bagaimana alur deployment sekarang?
+
+**Build dilakukan otomatis oleh GitHub Actions** setiap ada push ke `main` — image di-push ke **GHCR** (`ghcr.io/syahrulrzk/ai-convextract:latest`). Server cukup **pull** image yang sudah jadi, **tidak perlu build ulang** (dan tidak perlu `--build`).
+
+```
+Push ke main ──▶ GitHub Actions build image ──▶ push ke GHCR
+                                                      │
+                                                      ▼
+Server: git pull ──▶ docker compose pull ──▶ docker compose up -d
+```
+
+### Deploy di server (cara yang benar — disarankan)
+
+```bash
+cd /path/to/project
+
+git pull                 # 1. tarik code terbaru (docker-compose.yml, dll)
+docker compose pull      # 2. tarik image jadi dari GHCR (TIDAK build lokal)
+docker compose up -d     # 3. start redis + app (app tunggu redis healthy)
+```
+
+> **PENTING:** Jangan pakai `docker compose up -d --build` di server! Build lokal butuh akses ke `mcr.microsoft.com` (base image Playwright) yang sering **diblokir/putus** di server tertentu — pakai `pull` saja karena image sudah dibuild di GitHub.
+
+> **PENTING:** `docker compose up -d` saja **tidak** mengambil image baru kalau image lama sudah ada di server — **selalu `docker compose pull` dulu**. Image CI mendukung `linux/amd64` dan `linux/arm64`.
+
+> **Catatan:** Agar server bisa pull tanpa login, buat package GHCR menjadi **public** (buka halaman Packages repo → package settings → *Danger Zone* → *Change visibility* → **Public**). Untuk rollback ke versi tertentu: `docker compose pull` lalu set `image: ghcr.io/syahrulrzk/ai-convextract:sha-<short-sha>` di `docker-compose.yml`.
+
+### Build langsung dari source (opsi cadangan — local development)
+
+Kalau mau build image sendiri (misal di mesin lokal yang punya akses ke `mcr.microsoft.com`):
 
 ```bash
 docker compose up -d --build
 ```
 
 Ini otomatis menjalankan **Redis** + **app** (app menunggu Redis healthy). Aplikasi berjalan di port `3100`.
-
-### Opsi 2: Pull image dari GitHub Container Registry (disarankan untuk server)
-
-Setiap push ke branch `main`, GitHub Actions otomatis build image dan push ke **GHCR** (`ghcr.io/syahrulrzk/ai-convextract:latest`). Server cukup pull — tidak perlu build ulang:
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-> **Penting:** `docker compose up -d` saja **tidak** mengambil image baru kalau image lama sudah ada di server — selalu `docker compose pull` dulu. Image CI mendukung `linux/amd64` dan `linux/arm64`.
-
-> **Catatan:** Agar server bisa pull tanpa login, buat package GHCR menjadi **public** (buka halaman Packages repo → package settings → *Danger Zone* → *Change visibility* → **Public**). Untuk rollback ke versi tertentu: `docker compose pull` lalu set `image: ghcr.io/syahrulrzk/ai-convextract:sha-<short-sha>` di `docker-compose.yml`.
 
 > **Catatan:** Base image Docker (`mcr.microsoft.com/playwright`) **harus sama versinya** dengan `playwright` di `package.json` (saat ini `1.62.1`). Jika versi diubah, update juga `FROM` di `Dockerfile` agar browser di image cocok.
 
