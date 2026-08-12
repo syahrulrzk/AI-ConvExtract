@@ -329,6 +329,45 @@ body {
 }
 
 /* ============================================================
+   HERO VERSION BADGE
+   ============================================================ */
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  transition: var(--transition);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.hero-badge svg {
+  flex-shrink: 0;
+}
+
+.hero-badge-name {
+  color: var(--text-heading);
+}
+
+.hero-badge-version {
+  background: var(--primary-gradient);
+  color: #fff;
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+/* ============================================================
    HERO — CENTERED ABOVE GRID (default, before extraction)
    ============================================================ */
 .hero-centered-wrapper {
@@ -336,6 +375,10 @@ body {
   padding: 2rem 1rem 1.25rem;
   flex-shrink: 0;
   animation: heroFadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero-centered-wrapper .hero-badge {
+  margin-bottom: 0.9rem;
 }
 
 .hero-centered-wrapper h1 {
@@ -365,6 +408,10 @@ body {
   margin-bottom: 1.25rem;
   width: 100%;
   align-self: flex-start;
+}
+
+.page-hero.hero-left .hero-badge {
+  margin-bottom: 0.75rem;
 }
 
 .page-hero.hero-left h1 {
@@ -1130,6 +1177,17 @@ input[type="password"] {
 @media (max-width: 540px) {
   .navbar-container {
     padding: 0 1rem;
+  }
+
+  .hero-badge {
+    font-size: 0.7rem;
+    padding: 4px 11px;
+    gap: 6px;
+  }
+
+  .hero-badge-version {
+    font-size: 0.66rem;
+    padding: 1px 7px;
   }
 
   .navbar-center {

@@ -217,6 +217,17 @@ function ResultView({ data }) {
   );
 }
 
+// ── Hero Version Badge ───────────────────────────────────────────
+function HeroBadge({ version }) {
+  return (
+    <div className="hero-badge" title="Engine version (set via APP_VERSION env)">
+      <Sparkles size={13} />
+      <span className="hero-badge-name">ConvExtract Engine</span>
+      <span className="hero-badge-version">{version}</span>
+    </div>
+  );
+}
+
 // ── Main App Component ───────────────────────────────────────────
 export default function App() {
   const [url, setUrl] = useState('');
@@ -360,6 +371,7 @@ export default function App() {
         {/* Hero centered above grid — only shown BEFORE extraction */}
         {!hasResult && (
           <div className="hero-centered-wrapper">
+            <HeroBadge version={appVersion} />
             <h1>
               AI Conversation <span className="accent">Extractor</span>
             </h1>
@@ -377,6 +389,7 @@ export default function App() {
               {/* Header: only shown in left column AFTER extraction */}
               {hasResult && (
                 <header className="page-hero hero-left">
+                  <HeroBadge version={appVersion} />
                   <h1>
                     AI Conversation <span className="accent">Extractor</span>
                   </h1>
