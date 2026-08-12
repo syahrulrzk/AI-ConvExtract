@@ -44,7 +44,6 @@ export const buildApp = async () => {
   await app.register(fastifyStatic, {
     root: frontendPath,
     prefix: '/',
-    decorateReply: false,
   });
 
   // Fallback for SPA
