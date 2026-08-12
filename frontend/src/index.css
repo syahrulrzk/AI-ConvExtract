@@ -1008,6 +1008,28 @@ input[type="password"] {
   color: var(--primary);
 }
 
+/* Version badge in footer — shows APP_VERSION from backend env */
+.footer-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: var(--primary);
+  background: var(--primary-light);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  padding: 2px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.footer-version:hover {
+  background: #DBEAFE;
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
 /* ============================================================
    ANIMATIONS
    ============================================================ */

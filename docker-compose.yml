@@ -28,6 +28,7 @@ services:
       - PORT=3100
       - LOG_LEVEL=info
       - REDIS_URL=redis://redis:6379
+      - APP_VERSION=${APP_VERSION:-V.0.1}
 
 volumes:
   redis-data:

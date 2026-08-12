@@ -10,6 +10,8 @@ const envSchema = z.object({
   API_KEY: z.string().default('ai-converter-secret-key-123'),
   // Redis connection for the BullMQ job queue
   REDIS_URL: z.string().default('redis://localhost:6379'),
+  // App version shown in the frontend footer — override per deployment
+  APP_VERSION: z.string().default('V.0.1'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

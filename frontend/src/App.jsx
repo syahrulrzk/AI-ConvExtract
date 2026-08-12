@@ -21,7 +21,8 @@ import {
   ArrowRight,
   MessageSquareDashed,
   BookOpen,
-  ExternalLink
+  ExternalLink,
+  Tag
 } from 'lucide-react';
 import './index.css';
 
@@ -224,6 +225,7 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [jobStatus, setJobStatus] = useState(null); // 'queued' | 'running' | 'done' | 'failed'
+  const [appVersion, setAppVersion] = useState('V.0.1');
   const pollTimerRef = useRef(null);
   const activeJobRef = useRef(null); // guards against overlapping poll chains
 
@@ -232,6 +234,18 @@ export default function App() {
   // Cleanup polling on unmount — avoids setState after unmount
   useEffect(() => () => {
     if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+  }, []);
+
+  // Fetch app version from the backend (served from APP_VERSION env)
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/version')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.version) setAppVersion(data.version);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
   }, []);
 
   const stopPolling = () => {
@@ -477,7 +491,10 @@ export default function App() {
           <div className="footer-links">
             <a href="/docs" target="_blank" rel="noreferrer">API Docs</a>
             <span>&bull;</span>
-            <a href="/version" target="_blank" rel="noreferrer">Version</a>
+            <span className="footer-version" title="App version (set via APP_VERSION env)">
+              <Tag size={12} />
+              {appVersion}
+            </span>
           </div>
         </div>
       </footer>

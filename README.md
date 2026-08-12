@@ -77,6 +77,7 @@ Aplikasi dan Dashboard kini bisa diakses melalui `http://localhost:3100` (atau I
 | `PORT` | `3100` | Port server |
 | `API_KEY` | `ai-converter-secret-key-123` | API key untuk otentikasi |
 | `REDIS_URL` | `redis://localhost:6379` | Koneksi Redis untuk job queue |
+| `APP_VERSION` | `V.0.1` | Versi aplikasi yang ditampilkan di footer dashboard (bisa diubah per deployment) |
 | `EXTRACT_JOB_TIMEOUT_MS` | `3600000` (1 jam) | Batas maksimal waktu satu job sebelum di-abort (jaring pengaman anti-hang) |
 | `EXTRACT_COLLECT_TIMEOUT_MS` | `120000` (2 menit) | Budget dasar collection per halaman |
 | `EXTRACT_COLLECT_MAX_TIMEOUT_MS` | `3000000` (50 menit) | Ceiling budget collection — scaling otomatis dengan panjang percakapan |
