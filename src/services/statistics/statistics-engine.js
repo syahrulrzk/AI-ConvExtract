@@ -32,6 +32,24 @@ export function generateStatistics(messages, processingTime) {
     summaryInput,
     wordCount,
     characterCount,
-    processingTime
+    processingTime,
+    // Human-readable duration (e.g. "2m 8s") — easier to scan than raw ms
+    processingTimeLabel: formatDuration(processingTime)
   };
+}
+
+/**
+ * Format a millisecond duration for humans: "45s", "2m 8s", "1h 12m".
+ * @param {number} ms
+ * @returns {string}
+ */
+function formatDuration(ms) {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  return remMinutes > 0 ? `${hours}h ${remMinutes}m` : `${hours}h`;
 }

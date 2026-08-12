@@ -1,24 +1,44 @@
 # AI Conversation Extractor
 
-AI Conversation Extractor adalah microservice berbasis REST API (Fastify) dan Playwright untuk mengekstrak isi percakapan dari AI Share URL (seperti ChatGPT, Claude, dan Gemini) dan mengubahnya menjadi format JSON terstruktur yang siap digunakan oleh aplikasi lain.
+AI Conversation Extractor adalah microservice berbasis REST API (Fastify) untuk mengekstrak isi percakapan dari AI Share URL (seperti ChatGPT, Claude, dan Gemini) dan mengubahnya menjadi format JSON terstruktur yang siap digunakan oleh aplikasi lain.
 
-Proyek ini *stateless* (tanpa database), dilengkapi dengan dashboard UI interaktif (React/Vite), mendukung batch processing, dan memiliki otentikasi menggunakan API Key.
+Ekstraksi berjalan secara **asynchronous (job queue)** dengan Redis + BullMQ — request langsung dibalas `jobId`, hasil diambil lewat polling. Ini membuat percakapan **sangat panjang (ratusan prompt)** tetap bisa diekstrak lengkap tanpa timeout HTTP, karena proses berat berjalan di background worker.
 
 ## Fitur Utama
 
 - **Share URL Extraction:** Mengekstrak teks dari ChatGPT, Claude, dan Gemini Share links.
-- **Platform Detection:** Mendeteksi otomatis platform asal URL.
-- **Batch Processing:** Mengekstrak banyak URL sekaligus secara konkuren.
-- **Statistics Engine:** Menghitung jumlah pesan, prompt user, kata, dan karakter.
+- **Async Job Queue:** Redis + BullMQ — submit instan, hasil via polling (`GET /extract/jobs/:id`). Job persisten walau server restart, tahan hingga **1 jam**.
+- **Dual-Engine Extraction (ChatGPT):** Playwright **dan** Puppeteer dijalankan paralel, hasil terlengkap yang dipakai (anti-variance lazy-render).
+- **Long Conversation Handling:** Halaman share ChatGPT bersifat *virtualized* — collector otomatis scroll bertahap (adaptive + recovery pass), me-render & menggabungkan seluruh pesan sampai habis. Budget waktu **scaling otomatis** sesuai panjang percakapan.
+- **Attachment Detection:** Upload gambar terdeteksi (`attachments: ["image"]`) + badge di UI.
+- **Statistics Engine:** Menghitung jumlah pesan, prompt user, kata, karakter, dan waktu proses (format manusiawi `2m 8s`).
+- **Batch Processing:** Mengekstrak banyak URL sekaligus — tiap URL dapat `jobId` sendiri.
 - **Security:** Dilindungi oleh API Key.
-- **Dashboard UI:** Antarmuka web modern dengan fitur *Dark Mode*, *Glassmorphism*, dan *Raw JSON viewer*.
-- **Memory Efficient:** Menggunakan *Singleton Browser Manager* untuk memakai ulang (reuse) instance Playwright Chromium.
+- **Dashboard UI:** Antarmuka web modern (React/Vite) dengan polling status job, *Dark Mode*, *Glassmorphism*, dan *Raw JSON viewer*.
+- **Memory Efficient:** Menggunakan *Singleton Browser Manager* untuk memakai ulang (reuse) instance Chromium.
+
+## Arsitektur
+
+```
+User ──POST /api/v1/extract──▶ Server ──▶ Redis (BullMQ Queue)
+                                      │
+                          Response CEPAT: { jobId }  ◀── gak nunggu ekstraksi!
+                                      ▼
+                              Worker (background)
+                                      │
+                    Playwright ──┐     │
+                    Puppeteer  ──┴─▶   pilih hasil terlengkap
+                                      ▼
+                              Redis (hasil job)
+                                      │
+User ──GET /api/v1/extract/jobs/:id──▶ { status: "done", result: {...} }
+```
 
 ## Prasyarat
 
-Pastikan mesin Anda memiliki:
 - Node.js versi 20+ atau 22 LTS
 - NPM / Yarn
+- **Docker** (untuk Redis — wajib, queue memakai Redis)
 - Browser Playwright dependencies
 
 ## Instalasi (Local Development)
@@ -39,23 +59,41 @@ Pastikan mesin Anda memiliki:
    cp .env.example .env
    ```
    *(Secara bawaan, API key adalah `ai-converter-secret-key-123`)*
-5. Jalankan server backend (dengan hot-reload):
+5. Jalankan Redis (via Docker):
+   ```bash
+   docker compose up -d redis
+   ```
+6. Jalankan server backend (dengan hot-reload):
    ```bash
    npm run dev
    ```
 
 Aplikasi dan Dashboard kini bisa diakses melalui `http://localhost:3100` (atau IP mesin Anda).
 
+## Environment Variables
+
+| Variable | Default | Keterangan |
+|---|---|---|
+| `PORT` | `3100` | Port server |
+| `API_KEY` | `ai-converter-secret-key-123` | API key untuk otentikasi |
+| `REDIS_URL` | `redis://localhost:6379` | Koneksi Redis untuk job queue |
+| `EXTRACT_JOB_TIMEOUT_MS` | `3600000` (1 jam) | Batas maksimal waktu satu job sebelum di-abort (jaring pengaman anti-hang) |
+| `EXTRACT_COLLECT_TIMEOUT_MS` | `120000` (2 menit) | Budget dasar collection per halaman |
+| `EXTRACT_COLLECT_MAX_TIMEOUT_MS` | `3000000` (50 menit) | Ceiling budget collection — scaling otomatis dengan panjang percakapan |
+
+> **Catatan:** Collection budget otomatis naik seiring panjang percakapan (dihitung dari tinggi konten halaman), jadi percakapan ratusan prompt tidak terpotong — tetap di bawah job timeout 1 jam.
+
 ## Deployment (Docker)
 
-Aplikasi ini sepenuhnya siap di-deploy secara stateless menggunakan Docker.
+Aplikasi siap di-deploy bersama Redis menggunakan Docker Compose.
 
 ### Opsi 1: Build langsung dari source (local / server pertama kali)
 
 ```bash
 docker compose up -d --build
 ```
-Aplikasi akan berjalan di port `3100`.
+
+Ini otomatis menjalankan **Redis** + **app** (app menunggu Redis healthy). Aplikasi berjalan di port `3100`.
 
 ### Opsi 2: Pull image dari GitHub Container Registry (disarankan untuk server)
 
@@ -74,7 +112,7 @@ docker compose up -d
 
 ## Dokumentasi API
 
-### 1. Ekstrak Single URL
+### 1. Submit Ekstraksi (Single URL) — Async
 **Endpoint:** `POST /api/v1/extract`
 
 **Headers:**
@@ -88,7 +126,62 @@ docker compose up -d
 }
 ```
 
-### 2. Ekstrak Multi URL (Batch)
+**Response (202 Accepted) — instan, tidak menunggu ekstraksi:**
+```json
+{
+  "success": true,
+  "jobId": "4f1e2a3b-...",
+  "status": "queued",
+  "url": "https://chatgpt.com/share/xxxxxx",
+  "pollUrl": "/api/v1/extract/jobs/4f1e2a3b-..."
+}
+```
+
+### 2. Polling Status Job
+**Endpoint:** `GET /api/v1/extract/jobs/:jobId`
+
+**Headers:** `x-api-key: [YOUR_API_KEY]`
+
+**Response:**
+```json
+{
+  "success": true,
+  "jobId": "4f1e2a3b-...",
+  "status": "running",
+  "url": "https://chatgpt.com/share/xxxxxx"
+}
+```
+
+Status: `queued` → `running` → `done` (atau `failed`). Saat `done`, response menyertakan `result`:
+```json
+{
+  "success": true,
+  "jobId": "4f1e2a3b-...",
+  "status": "done",
+  "result": {
+    "success": true,
+    "url": "https://chatgpt.com/share/xxxxxx",
+    "platform": "chatgpt",
+    "title": "Judul Percakapan",
+    "messages": [
+      { "role": "user", "content": "..." },
+      { "role": "assistant", "content": "...", "attachments": ["image"] }
+    ],
+    "promptCount": 59,
+    "assistantCount": 59,
+    "totalMessages": 118,
+    "wordCount": 9897,
+    "characterCount": 80337,
+    "processingTime": 127580,
+    "processingTimeLabel": "2m 8s",
+    "truncated": false
+  }
+}
+```
+
+> **Catatan:** `truncated: true` berarti percakapan sangat panjang dan melewati batas waktu collection — sebagian pesan terakhir mungkin tidak terambil (UI menampilkan peringatan).
+
+### 3. Ekstrak Multi URL (Batch)
 **Endpoint:** `POST /api/v1/extract/batch`
 
 **Headers:**
@@ -105,7 +198,9 @@ docker compose up -d
 }
 ```
 
-### 3. Cek Status Server (Health)
+**Response (202):** tiap URL mendapat `jobId` sendiri + `pollUrl`.
+
+### 4. Cek Status Server (Health)
 **Endpoint:** `GET /health`
 
 ---
@@ -158,10 +253,12 @@ Copy JSON di bawah ini dan paste langsung ke canvas n8n Anda untuk membuat HTTP 
 }
 ```
 
+> **Untuk n8n:** karena ekstraksi async, ambil `jobId` dari response lalu polling `GET /api/v1/extract/jobs/:jobId` (misal dengan `Wait` node tiap 2-5 detik) sampai `status: "done"`, baru lanjut ke AI Agent processing.
+
 **Alur Rekomendasi (Sesuai Gambar):**
 1. **Trigger:** `Execute workflow` / Jadwal.
 2. **Data Source:** Baca link (URL) percakapan AI dari Google Sheets / Database.
 3. **Filter (If):** Cek apakah URL valid.
-4. **Ekstraksi (HTTP Request):** Kirim POST Request ke AI-ConvExtract (seperti JSON di atas).
+4. **Ekstraksi (HTTP Request):** Kirim POST Request ke AI-ConvExtract (seperti JSON di atas), lalu polling status job sampai `done`.
 5. **AI Agent Processing (Groq/Llama):** Gunakan hasil teks ekstrak untuk diringkas/dianalisa oleh AI Agent.
 6. **Save Result:** Update atau tambah baris di Google Sheets dengan hasil akhir.

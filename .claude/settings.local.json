@@ -3,7 +3,15 @@
     "allow": [
       "Bash(curl -s -o /dev/null -w \"index.html: %{http_code}\\\\n\" http://localhost:5173/)",
       "Bash(curl -s http://localhost:5173/src/index.css)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(node scripts/test-extract.js)",
+      "Bash(curl -sL -A \"Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/125.0.0.0 Safari/537.36\" \"https://chatgpt.com/share/6a7c2b4a-1dd4-83ec-82a5-bf7668cc8fd7\" -o /tmp/claude-1000/-home-linux-ai-converter/4138aeef-e4be-467f-8dd0-fc4c0fbdef47/scratchpad/page.html -w \"HTTP %{http_code}, size %{size_download}\\\\n\")",
+      "Bash(node *)",
+      "Bash(cd *)",
+      "Bash(python3 *)",
+      "Bash(kill 3217289)",
+      "Bash(pkill -9 -f \"chrome-headless-shell.*playwright_chromiumdev_profile-AxYbRK\")",
+      "Bash(pkill -9 -f \"puppeteer_dev_profile-Ewp8wn\")"
     ]
   }
 }

@@ -1,1 +1,7 @@
-node_modules\n.env\ndist\n
+node_modules
+.env
+dist
+*.log
+.DS_Store
+.env.local
+.env.production

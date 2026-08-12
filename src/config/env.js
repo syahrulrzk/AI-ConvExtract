@@ -8,6 +8,8 @@ const envSchema = z.object({
   LOG_LEVEL: z.string().default('info'),
   NODE_ENV: z.string().default('development'),
   API_KEY: z.string().default('ai-converter-secret-key-123'),
+  // Redis connection for the BullMQ job queue
+  REDIS_URL: z.string().default('redis://localhost:6379'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

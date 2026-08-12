@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Loader2,
   Download,
@@ -14,6 +14,8 @@ import {
   Sparkles,
   Bot,
   User,
+  Image as ImageIcon,
+  Paperclip,
   Code2,
   MessageSquare,
   ArrowRight,
@@ -22,6 +24,19 @@ import {
   ExternalLink
 } from 'lucide-react';
 import './index.css';
+
+// ── Format duration for humans: 45s, 2m 8s, 1h 12m ───────────────
+function formatDuration(ms) {
+  if (typeof ms !== 'number' || !isFinite(ms) || ms <= 0) return '—';
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remMinutes = minutes % 60;
+  return remMinutes > 0 ? `${hours}h ${remMinutes}m` : `${hours}h`;
+}
 
 // ── Detect platform from URL ──────────────────────────────────────
 function detectPlatformFromUrl(url) {
@@ -100,6 +115,16 @@ function ResultView({ data }) {
         Ekstraksi Berhasil! Ditemukan {data.totalMessages ?? messages.length} pesan.
       </div>
 
+      {data.truncated && (
+        <div className="truncate-warning">
+          <AlertCircle size={16} />
+          <span>
+            <strong>Ekstraksi mungkin tidak lengkap.</strong> Percakapan ini sangat panjang dan melewati batas waktu
+            ekstraksi. Sebagian pesan terakhir mungkin tidak terambil — coba extract ulang.
+          </span>
+        </div>
+      )}
+
       <div className="card result-card">
         <div className="card-body">
           {/* Result Header */}
@@ -121,7 +146,7 @@ function ResultView({ data }) {
             <StatBox value={data.totalMessages ?? messages.length} label="Messages" icon={MessageSquare} colorClass="stat-blue" />
             <StatBox value={data.wordCount ?? '—'} label="Words" icon={FileText} colorClass="stat-indigo" />
             <StatBox value={data.promptCount ?? '—'} label="Prompts" icon={Zap} colorClass="stat-amber" />
-            <StatBox value={data.processingTime ? `${(data.processingTime / 1000).toFixed(1)}s` : '—'} label="Time" icon={Clock} colorClass="stat-emerald" />
+            <StatBox value={data.processingTimeLabel || formatDuration(data.processingTime)} label="Time" icon={Clock} colorClass="stat-emerald" />
           </div>
 
           {/* View Tabs */}
@@ -148,19 +173,28 @@ function ResultView({ data }) {
           {view === 'visual' ? (
             messages.length > 0 ? (
               <div className="messages-preview">
-                {messages.map((msg, i) => (
-                  <div key={i} className={`message-bubble ${msg.role}`}>
-                    <div className="message-header">
-                      <div className="avatar">
-                        {msg.role === 'user' ? <User size={13} /> : <Bot size={13} />}
+                {messages.map((msg, i) => {
+                  const hasAttachments = Array.isArray(msg.attachments) && msg.attachments.length > 0;
+                  return (
+                    <div key={i} className={`message-bubble ${msg.role}${hasAttachments ? ' has-attachment' : ''}`}>
+                      <div className="message-header">
+                        <div className="avatar">
+                          {msg.role === 'user' ? <User size={13} /> : <Bot size={13} />}
+                        </div>
+                        <span className="message-role-name">
+                          {msg.role === 'user' ? 'User Prompt' : (PLATFORM_LABELS[data.platform] || 'AI Assistant')}
+                        </span>
                       </div>
-                      <span className="message-role-name">
-                        {msg.role === 'user' ? 'User Prompt' : (PLATFORM_LABELS[data.platform] || 'AI Assistant')}
-                      </span>
+                      {hasAttachments && (
+                        <div className="attachment-badge">
+                          {msg.attachments.includes('image') ? <ImageIcon size={13} /> : <Paperclip size={13} />}
+                          {msg.content}
+                        </div>
+                      )}
+                      {!hasAttachments && <div className="message-body">{msg.content}</div>}
                     </div>
-                    <div className="message-body">{msg.content}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="empty-state">
@@ -189,13 +223,66 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [jobStatus, setJobStatus] = useState(null); // 'queued' | 'running' | 'done' | 'failed'
+  const pollTimerRef = useRef(null);
+  const activeJobRef = useRef(null); // guards against overlapping poll chains
 
   const detectedPlatform = detectPlatformFromUrl(url);
 
+  // Cleanup polling on unmount — avoids setState after unmount
+  useEffect(() => () => {
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+  }, []);
+
+  const stopPolling = () => {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+    activeJobRef.current = null;
+  };
+
+  const pollJob = async (jobId, apiKeyValue) => {
+    const res = await fetch(`/api/v1/extract/jobs/${jobId}`, {
+      headers: { 'x-api-key': apiKeyValue },
+    });
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error?.message || 'Failed to check job status');
+    }
+
+    // If a newer submission started, ignore stale responses
+    if (activeJobRef.current !== jobId) return;
+    setJobStatus(data.status);
+
+    if (data.status === 'done') {
+      setResult(data.result);
+      setLoading(false);
+      activeJobRef.current = null;
+      return;
+    }
+    if (data.status === 'failed') {
+      throw new Error(data.error?.message || 'Extraction failed');
+    }
+
+    // Still queued/running — poll again in 2s
+    pollTimerRef.current = setTimeout(() => {
+      pollJob(jobId, apiKeyValue).catch((err) => {
+        if (activeJobRef.current !== jobId) return;
+        setError(err.message);
+        setLoading(false);
+        activeJobRef.current = null;
+      });
+    }, 2000);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    stopPolling(); // cancel any stale poll chain first
     setLoading(true);
     setError(null);
+    setResult(null);
+    setJobStatus('queued');
 
     try {
       const res = await fetch('/api/v1/extract', {
@@ -210,11 +297,12 @@ export default function App() {
       if (!data.success) {
         throw new Error(data.error?.message || 'Extraction failed');
       }
-      setResult(data);
+      activeJobRef.current = data.jobId;
+      await pollJob(data.jobId, apiKey);
     } catch (err) {
       setError(err.message);
-    } finally {
       setLoading(false);
+      activeJobRef.current = null;
     }
   };
 
@@ -343,7 +431,7 @@ export default function App() {
 
                     <button id="btn-extract" type="submit" className="btn btn-primary" disabled={loading}>
                       {loading ? (
-                        <><Loader2 className="spinner" size={18} /> Extracting...</>
+                        <><Loader2 className="spinner" size={18} /> {jobStatus === 'queued' ? 'Queued...' : 'Extracting...'}</>
                       ) : (
                         <><Download size={18} /> Extract Conversation <ArrowRight size={18} /></>
                       )}

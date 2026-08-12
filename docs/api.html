@@ -491,6 +491,9 @@
         <a class="sidebar-link" href="#ep-extract" onclick="closeDrawer()">
           <span class="mbadge mbadge-post">POST</span>/extract
         </a>
+        <a class="sidebar-link" href="#ep-job" onclick="closeDrawer()">
+          <span class="mbadge mbadge-get">GET</span>/extract/jobs/:jobId
+        </a>
         <a class="sidebar-link" href="#ep-batch" onclick="closeDrawer()">
           <span class="mbadge mbadge-post">POST</span>/extract/batch
         </a>
@@ -519,8 +522,8 @@
         </p>
         <div class="hero-meta">
           <div class="hero-meta-item">🚀 <strong>Fastify</strong>&nbsp; REST API</div>
-          <div class="hero-meta-item">🎭 <strong>Playwright</strong>&nbsp; Browser Engine</div>
-          <div class="hero-meta-item">⚡ <strong>&lt; 10s</strong>&nbsp; Response Time</div>
+          <div class="hero-meta-item">🎭 <strong>Playwright + Puppeteer</strong>&nbsp; Dual Engine</div>
+          <div class="hero-meta-item">⚡ <strong>Async</strong>&nbsp; Job Queue (Redis + BullMQ)</div>
           <div class="hero-meta-item">🔒 <strong>API Key</strong>&nbsp; Auth</div>
         </div>
       </div>
@@ -568,8 +571,8 @@
         <div class="qs-step">
           <div class="qs-num">3</div>
           <div class="qs-content">
-            <h4>Make your first request</h4>
-            <p>POST the URL with your API key — receive structured JSON back in seconds.</p>
+            <h4>Submit &amp; poll your job</h4>
+            <p>POST the URL with your API key — you instantly get a <code>jobId</code>. Then poll <code>GET /extract/jobs/:jobId</code> until <code>status</code> is <code>done</code> and the structured JSON is returned.</p>
           </div>
         </div>
         <div class="code-block">
@@ -742,10 +745,10 @@
             <span class="endpoint-toggle">⌄</span>
           </div>
           <div class="endpoint-body">
-            <p>Extract a single AI conversation from a public share URL. The API detects the platform, spins up a headless browser via Playwright, waits for the page to fully render, then returns parsed conversation data as structured JSON.</p>
+            <p>Submit a single AI conversation from a public share URL for extraction. The request is <strong>asynchronous</strong>: it returns a <code>jobId</code> immediately, and the actual extraction runs in a background worker (Redis + BullMQ). Poll <code>GET /api/v1/extract/jobs/:jobId</code> until the job is <code>done</code>.</p>
             <div class="alert alert-warning">
               <span class="alert-icon">⚠️</span>
-              <span>Uses browser automation — response time is 2–8 seconds depending on the AI platform's page load speed.</span>
+              <span>Extraction uses dual browser automation (Playwright + Puppeteer). Long conversations (hundreds of prompts) can take minutes — that's why the API is async, so no HTTP connection ever times out.</span>
             </div>
 
             <div>
@@ -785,27 +788,18 @@
             </div>
 
             <div>
-              <h3>Response — 200 Success</h3>
+              <h3>Response — 202 Accepted (instant)</h3>
               <div class="code-block">
-                <div class="code-header"><span class="code-lang">JSON — Success</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <div class="code-header"><span class="code-lang">JSON — Job Submitted</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
                 <pre>{
-  <span class="jk">"success"</span><span class="jp">:</span>        <span class="jb">true</span><span class="jp">,</span>
-  <span class="jk">"url"</span><span class="jp">:</span>           <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
-  <span class="jk">"platform"</span><span class="jp">:</span>     <span class="js">"chatgpt"</span><span class="jp">,</span>
-  <span class="jk">"title"</span><span class="jp">:</span>        <span class="js">"My AI Conversation"</span><span class="jp">,</span>
-  <span class="jk">"messages"</span><span class="jp">:</span> [
-    { <span class="jk">"role"</span><span class="jp">:</span> <span class="js">"user"</span><span class="jp">,</span>      <span class="jk">"content"</span><span class="jp">:</span> <span class="js">"Hello! Explain quantum computing."</span> }<span class="jp">,</span>
-    { <span class="jk">"role"</span><span class="jp">:</span> <span class="js">"assistant"</span><span class="jp">,</span> <span class="jk">"content"</span><span class="jp">:</span> <span class="js">"Quantum computing is a type of computing..."</span> }
-  ]<span class="jp">,</span>
-  <span class="jk">"promptCount"</span><span class="jp">:</span>    <span class="jn">1</span><span class="jp">,</span>
-  <span class="jk">"assistantCount"</span><span class="jp">:</span> <span class="jn">1</span><span class="jp">,</span>
-  <span class="jk">"totalMessages"</span><span class="jp">:</span>  <span class="jn">2</span><span class="jp">,</span>
-  <span class="jk">"summaryInput"</span><span class="jp">:</span>   <span class="js">"Hello! Explain quantum computing."</span><span class="jp">,</span>
-  <span class="jk">"wordCount"</span><span class="jp">:</span>     <span class="jn">120</span><span class="jp">,</span>
-  <span class="jk">"characterCount"</span><span class="jp">:</span> <span class="jn">840</span><span class="jp">,</span>
-  <span class="jk">"processingTime"</span><span class="jp">:</span> <span class="jn">2430</span>  <span class="jc">// milliseconds</span>
+  <span class="jk">"success"</span><span class="jp">:</span>  <span class="jb">true</span><span class="jp">,</span>
+  <span class="jk">"jobId"</span><span class="jp">:</span>    <span class="js">"4f1e2a3b-9c8d-4e7f-8a6b-5c4d3e2f1a0b"</span><span class="jp">,</span>
+  <span class="jk">"status"</span><span class="jp">:</span>  <span class="js">"queued"</span><span class="jp">,</span>
+  <span class="jk">"url"</span><span class="jp">:</span>      <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
+  <span class="jk">"pollUrl"</span><span class="jp">:</span>  <span class="js">"/api/v1/extract/jobs/4f1e2a3b-9c8d-4e7f-8a6b-5c4d3e2f1a0b"</span>
 }</pre>
               </div>
+              <p style="margin-top:10px;">Then poll the job (every 2–5s) until <code>status</code> becomes <code>done</code> — the full result is included in that response.</p>
             </div>
 
             <!-- Code tabs -->
@@ -828,7 +822,7 @@
               <div id="extract-js" class="tab-content">
                 <div class="code-block" style="border-radius:0 6px 6px 6px;">
                   <div class="code-header"><span class="code-lang">JavaScript (fetch)</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
-                  <pre><span class="kh">const</span> response = <span class="kh">await</span> fetch(<span class="js">'http://localhost:3100/api/v1/extract'</span>, {
+                  <pre><span class="kh">const</span> submit = <span class="kh">await</span> fetch(<span class="js">'http://localhost:3100/api/v1/extract'</span>, {
   method:  <span class="js">'POST'</span>,
   headers: {
     <span class="js">'Content-Type'</span>: <span class="js">'application/json'</span>,
@@ -836,17 +830,24 @@
   },
   body: JSON.stringify({ url: <span class="js">'https://chatgpt.com/share/xxxxxx'</span> })
 });
+<span class="kh">const</span> { jobId } = <span class="kh">await</span> submit.json();
 
-<span class="kh">const</span> data = <span class="kh">await</span> response.json();
-console.log(data.messages);       <span class="jc">// array of {role, content}</span>
-console.log(data.promptCount);    <span class="jc">// number of user prompts</span>
-console.log(data.processingTime); <span class="jc">// ms taken</span></pre>
+<span class="jc">// Poll until done</span>
+<span class="kh">while</span> (<span class="jb">true</span>) {
+  <span class="kh">const</span> res = <span class="kh">await</span> fetch(<span class="js">`http://localhost:3100/api/v1/extract/jobs/${jobId}`</span>, {
+    headers: { <span class="js">'x-api-key'</span>: <span class="js">'ai-converter-secret-key-123'</span> }
+  });
+  <span class="kh">const</span> data = <span class="kh">await</span> res.json();
+  <span class="kh">if</span> (data.status === <span class="js">'done'</span>)   { console.log(data.result); <span class="kh">break</span>; }
+  <span class="kh">if</span> (data.status === <span class="js">'failed'</span>) { <span class="kh">throw</span> <span class="kh">new</span> Error(data.error?.message); }
+  <span class="kh">await</span> <span class="kh">new</span> Promise(r => setTimeout(r, 2000));
+}</pre>
                 </div>
               </div>
               <div id="extract-python" class="tab-content">
                 <div class="code-block" style="border-radius:0 6px 6px 6px;">
                   <div class="code-header"><span class="code-lang">Python (requests)</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
-                  <pre><span class="kh">import</span> requests
+                  <pre><span class="kh">import</span> requests, time
 
 resp = requests.post(
     <span class="js">"http://localhost:3100/api/v1/extract"</span>,
@@ -856,10 +857,101 @@ resp = requests.post(
     },
     json={<span class="js">"url"</span>: <span class="js">"https://claude.ai/share/xxxxxx"</span>}
 )
-data = resp.json()
-<span class="kh">for</span> msg <span class="kh">in</span> data[<span class="js">"messages"</span>]:
-    <span class="kh">print</span>(<span class="js">f"[{msg['role']}] {msg['content'][:80]}..."</span>)</pre>
+job_id = resp.json()[<span class="js">"jobId"</span>]
+
+<span class="jc"># Poll until done</span>
+<span class="kh">while</span> <span class="jb">True</span>:
+    r = requests.get(
+        <span class="js">f"http://localhost:3100/api/v1/extract/jobs/{job_id}"</span>,
+        headers={<span class="js">"x-api-key"</span>: <span class="js">"ai-converter-secret-key-123"</span>}
+    ).json()
+    <span class="kh">if</span> r[<span class="js">"status"</span>] == <span class="js">"done"</span>:
+        <span class="kh">for</span> msg <span class="kh">in</span> r[<span class="js">"result"</span>][<span class="js">"messages"</span>]:
+            <span class="kh">print</span>(<span class="js">f"[{msg['role']}] {msg['content'][:80]}..."</span>)
+        <span class="kh">break</span>
+    time.sleep(2)</pre>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- GET /api/v1/extract/jobs/:jobId -->
+        <div class="endpoint-card" id="ep-job">
+          <div class="endpoint-header" onclick="toggleCard(this)">
+            <span class="method-badge method-get">GET</span>
+            <span class="endpoint-path">/api/v1/extract/jobs/:jobId</span>
+            <span class="endpoint-desc">Poll Job Status</span>
+            <span class="endpoint-toggle">⌄</span>
+          </div>
+          <div class="endpoint-body">
+            <p>Poll the status of an extraction job. Status transitions: <code>queued</code> → <code>running</code> → <code>done</code> (or <code>failed</code>). When <code>done</code>, the full extraction result is included under <code>result</code>.</p>
+            <div class="alert alert-info">
+              <span class="alert-icon">ℹ️</span>
+              <span>Completed/failed jobs are retained in Redis for 1 hour, then cleaned up automatically (a 404 is returned after that).</span>
+            </div>
+
+            <div>
+              <h3>Path Parameters</h3>
+              <div class="card" style="padding:0;">
+                <table>
+                  <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+                  <tbody>
+                    <tr><td class="td-k">jobId</td><td class="td-t">string (UUID)</td><td style="color:var(--text-muted);font-size:13px;">Job id returned by <code>POST /extract</code></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h3>Response — 200 OK</h3>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">JSON — Running</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>{
+  <span class="jk">"success"</span><span class="jp">:</span>    <span class="jb">true</span><span class="jp">,</span>
+  <span class="jk">"jobId"</span><span class="jp">:</span>      <span class="js">"4f1e2a3b-9c8d-4e7f-8a6b-5c4d3e2f1a0b"</span><span class="jp">,</span>
+  <span class="jk">"status"</span><span class="jp">:</span>     <span class="js">"running"</span><span class="jp">,</span>
+  <span class="jk">"url"</span><span class="jp">:</span>        <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
+  <span class="jk">"createdAt"</span><span class="jp">:</span>  <span class="jn">1754938800000</span><span class="jp">,</span>
+  <span class="jk">"startedAt"</span><span class="jp">:</span>  <span class="jn">1754938801200</span>
+}</pre>
+              </div>
+            </div>
+
+            <div>
+              <h3>Response — done (with result)</h3>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">JSON — Done</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>{
+  <span class="jk">"success"</span><span class="jp">:</span>  <span class="jb">true</span><span class="jp">,</span>
+  <span class="jk">"jobId"</span><span class="jp">:</span>    <span class="js">"4f1e2a3b-9c8d-4e7f-8a6b-5c4d3e2f1a0b"</span><span class="jp">,</span>
+  <span class="jk">"status"</span><span class="jp">:</span>  <span class="js">"done"</span><span class="jp">,</span>
+  <span class="jk">"result"</span><span class="jp">:</span> {
+    <span class="jk">"success"</span><span class="jp">:</span>         <span class="jb">true</span><span class="jp">,</span>
+    <span class="jk">"url"</span><span class="jp">:</span>            <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
+    <span class="jk">"platform"</span><span class="jp">:</span>      <span class="js">"chatgpt"</span><span class="jp">,</span>
+    <span class="jk">"title"</span><span class="jp">:</span>         <span class="js">"My AI Conversation"</span><span class="jp">,</span>
+    <span class="jk">"messages"</span><span class="jp">:</span>      [
+      { <span class="jk">"role"</span><span class="jp">:</span> <span class="js">"user"</span><span class="jp">,</span>      <span class="jk">"content"</span><span class="jp">:</span> <span class="js">"Hello!"</span> }<span class="jp">,</span>
+      { <span class="jk">"role"</span><span class="jp">:</span> <span class="js">"assistant"</span><span class="jp">,</span> <span class="jk">"content"</span><span class="jp">:</span> <span class="js">"Hi there!"</span> }
+    ]<span class="jp">,</span>
+    <span class="jk">"promptCount"</span><span class="jp">:</span>     <span class="jn">1</span><span class="jp">,</span>
+    <span class="jk">"assistantCount"</span><span class="jp">:</span>  <span class="jn">1</span><span class="jp">,</span>
+    <span class="jk">"totalMessages"</span><span class="jp">:</span>   <span class="jn">2</span><span class="jp">,</span>
+    <span class="jk">"processingTime"</span><span class="jp">:</span>  <span class="jn">2430</span><span class="jp">,</span>
+    <span class="jk">"processingTimeLabel"</span><span class="jp">:</span> <span class="js">"2s"</span><span class="jp">,</span>
+    <span class="jk">"truncated"</span><span class="jp">:</span>       <span class="jb">false</span>
+  }
+}</pre>
+              </div>
+            </div>
+
+            <div>
+              <h3>Example</h3>
+              <div class="code-block">
+                <div class="code-header"><span class="code-lang">cURL</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
+                <pre>curl <span class="ku">http://localhost:3100/api/v1/extract/jobs/4f1e2a3b-9c8d-4e7f-8a6b-5c4d3e2f1a0b</span> \
+  -H <span class="kd">"x-api-key: ai-converter-secret-key-123"</span></pre>
               </div>
             </div>
           </div>
@@ -874,7 +966,7 @@ data = resp.json()
             <span class="endpoint-toggle">⌄</span>
           </div>
           <div class="endpoint-body">
-            <p>Extract multiple conversations concurrently in a single request. All URLs are processed in parallel — total time equals the slowest individual URL.</p>
+            <p>Submit multiple conversations in a single request — each URL gets its own <code>jobId</code> (same async job-queue flow). Poll each job via <code>GET /extract/jobs/:jobId</code>.</p>
             <div class="alert alert-info">
               <span class="alert-icon">ℹ️</span>
               <span>Max <strong>10 URLs</strong> per request. Failures are per-URL — one bad URL won't fail the whole batch.</span>
@@ -908,31 +1000,26 @@ data = resp.json()
             </div>
 
             <div>
-              <h3>Response — 200 Success</h3>
+              <h3>Response — 202 Accepted (instant)</h3>
               <div class="code-block">
                 <div class="code-header"><span class="code-lang">JSON — Batch Response</span><button class="copy-btn" onclick="copyBlock(this)">📋 Copy</button></div>
                 <pre>{
   <span class="jk">"success"</span><span class="jp">:</span> <span class="jb">true</span><span class="jp">,</span>
   <span class="jk">"total"</span><span class="jp">:</span>   <span class="jn">2</span><span class="jp">,</span>
-  <span class="jk">"results"</span><span class="jp">:</span> [
+  <span class="jk">"jobs"</span><span class="jp">:</span> [
     {
-      <span class="jk">"success"</span><span class="jp">:</span>        <span class="jb">true</span><span class="jp">,</span>
-      <span class="jk">"url"</span><span class="jp">:</span>           <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
-      <span class="jk">"platform"</span><span class="jp">:</span>     <span class="js">"chatgpt"</span><span class="jp">,</span>
-      <span class="jk">"title"</span><span class="jp">:</span>        <span class="js">"Conversation A"</span><span class="jp">,</span>
-      <span class="jk">"messages"</span><span class="jp">:</span>     [<span class="jc">/* ... */</span>]<span class="jp">,</span>
-      <span class="jk">"promptCount"</span><span class="jp">:</span>  <span class="jn">3</span><span class="jp">,</span>
-      <span class="jk">"totalMessages"</span><span class="jp">:</span> <span class="jn">6</span><span class="jp">,</span>
-      <span class="jk">"processingTime"</span><span class="jp">:</span> <span class="jn">3200</span>
+      <span class="jk">"url"</span><span class="jp">:</span>       <span class="js">"https://chatgpt.com/share/xxxxxx"</span><span class="jp">,</span>
+      <span class="jk">"success"</span><span class="jp">:</span>  <span class="jb">true</span><span class="jp">,</span>
+      <span class="jk">"jobId"</span><span class="jp">:</span>     <span class="js">"job-aaaa-bbbb-cccc"</span><span class="jp">,</span>
+      <span class="jk">"status"</span><span class="jp">:</span>    <span class="js">"queued"</span><span class="jp">,</span>
+      <span class="jk">"pollUrl"</span><span class="jp">:</span>  <span class="js">"/api/v1/extract/jobs/job-aaaa-bbbb-cccc"</span>
     }<span class="jp">,</span>
     {
-      <span class="jk">"success"</span><span class="jp">:</span>  <span class="jb">false</span><span class="jp">,</span>
-      <span class="jk">"url"</span><span class="jp">:</span>      <span class="js">"https://claude.ai/share/yyyyyy"</span><span class="jp">,</span>
-      <span class="jk">"platform"</span><span class="jp">:</span> <span class="js">"claude"</span><span class="jp">,</span>
-      <span class="jk">"error"</span><span class="jp">:</span> {
-        <span class="jk">"code"</span><span class="jp">:</span>    <span class="js">"EXTRACTION_FAILED"</span><span class="jp">,</span>
-        <span class="jk">"message"</span><span class="jp">:</span> <span class="js">"Page not found"</span>
-      }
+      <span class="jk">"url"</span><span class="jp">:</span>       <span class="js">"https://claude.ai/share/yyyyyy"</span><span class="jp">,</span>
+      <span class="jk">"success"</span><span class="jp">:</span>  <span class="jb">true</span><span class="jp">,</span>
+      <span class="jk">"jobId"</span><span class="jp">:</span>     <span class="js">"job-dddd-eeee-ffff"</span><span class="jp">,</span>
+      <span class="jk">"status"</span><span class="jp">:</span>    <span class="js">"queued"</span>,
+      <span class="jk">"pollUrl"</span><span class="jp">:</span>  <span class="js">"/api/v1/extract/jobs/job-dddd-eeee-ffff"</span>
     }
   ]
 }</pre>
@@ -972,10 +1059,9 @@ data = resp.json()
     ]
   })
 });
-<span class="kh">const</span> { results } = <span class="kh">await</span> response.json();
-results.forEach(r => {
-  <span class="kh">if</span> (r.success) console.log(<span class="js">`✓ ${r.platform}: ${r.totalMessages} msgs`</span>);
-  <span class="kh">else</span>           console.error(<span class="js">`✗ ${r.url}: ${r.error.message}`</span>);
+<span class="kh">const</span> { jobs } = <span class="kh">await</span> response.json();
+jobs.forEach(j => {
+  <span class="kh">console.log</span>(<span class="js">`✓ ${j.url}: ${j.jobId} (poll via ${j.pollUrl})`</span>);
 });</pre>
                 </div>
               </div>
@@ -995,9 +1081,8 @@ resp = requests.post(
         <span class="js">"https://claude.ai/share/yyy"</span>
     ]}
 )
-<span class="kh">for</span> r <span class="kh">in</span> resp.json()[<span class="js">"results"</span>]:
-    status = <span class="js">"✓"</span> <span class="kh">if</span> r[<span class="js">"success"</span>] <span class="kh">else</span> <span class="js">"✗"</span>
-    <span class="kh">print</span>(<span class="js">f"{status} {r['platform']}: {r.get('totalMessages','error')}"</span>)</pre>
+<span class="kh">for</span> job <span class="kh">in</span> resp.json()[<span class="js">"jobs"</span>]:
+    <span class="kh">print</span>(<span class="js">f"✓ {job['url']}: {job['jobId']}"</span>)</pre>
                 </div>
               </div>
             </div>
