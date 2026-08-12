@@ -50,10 +50,27 @@ Aplikasi dan Dashboard kini bisa diakses melalui `http://localhost:3100` (atau I
 
 Aplikasi ini sepenuhnya siap di-deploy secara stateless menggunakan Docker.
 
+### Opsi 1: Build langsung dari source (local / server pertama kali)
+
 ```bash
-docker-compose up -d --build
+docker compose up -d --build
 ```
 Aplikasi akan berjalan di port `3100`.
+
+### Opsi 2: Pull image dari GitHub Container Registry (disarankan untuk server)
+
+Setiap push ke branch `main`, GitHub Actions otomatis build image dan push ke **GHCR** (`ghcr.io/syahrulrzk/ai-convextract:latest`). Server cukup pull — tidak perlu build ulang:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+> **Penting:** `docker compose up -d` saja **tidak** mengambil image baru kalau image lama sudah ada di server — selalu `docker compose pull` dulu. Image CI mendukung `linux/amd64` dan `linux/arm64`.
+
+> **Catatan:** Agar server bisa pull tanpa login, buat package GHCR menjadi **public** (buka halaman Packages repo → package settings → *Danger Zone* → *Change visibility* → **Public**). Untuk rollback ke versi tertentu: `docker compose pull` lalu set `image: ghcr.io/syahrulrzk/ai-convextract:sha-<short-sha>` di `docker-compose.yml`.
+
+> **Catatan:** Base image Docker (`mcr.microsoft.com/playwright`) **harus sama versinya** dengan `playwright` di `package.json` (saat ini `1.62.1`). Jika versi diubah, update juga `FROM` di `Dockerfile` agar browser di image cocok.
 
 ## Dokumentasi API
 

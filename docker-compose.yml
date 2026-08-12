@@ -1,5 +1,7 @@
 services:
   ai-converter:
+    # image is pushed by CI (GHCR); server only needs `docker compose pull`
+    image: ghcr.io/syahrulrzk/ai-convextract:latest
     build: .
     ports:
       - "3100:3100"
