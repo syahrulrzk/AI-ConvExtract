@@ -111,107 +111,104 @@ function ResultView({ data }) {
 
   return (
     <div className="result-container">
-      <div className="success-strip">
-        <CheckCircle2 size={16} />
-        Ekstraksi Berhasil! Ditemukan {data.totalMessages ?? messages.length} pesan.
-      </div>
-
+      {/* Truncation warning — scrolls away with the chat */}
       {data.truncated && (
         <div className="truncate-warning">
           <AlertCircle size={16} />
           <span>
-            <strong>Ekstraksi mungkin tidak lengkap.</strong> Percakapan ini sangat panjang dan melewati batas waktu
-            ekstraksi. Sebagian pesan terakhir mungkin tidak terambil — coba extract ulang.
+            <strong>Extraction may be incomplete.</strong> This conversation is very long and exceeded the extraction
+            time limit. Some of the latest messages may be missing — try extracting again.
           </span>
         </div>
       )}
 
-      <div className="card result-card">
-        <div className="card-body">
-          {/* Result Header */}
-          <div className="result-header">
-            <div className="result-title-group">
-              <span className={`platform-badge badge-${platformClass}`}>
-                {PLATFORM_LABELS[data.platform] || data.platform || 'AI'}
-              </span>
-              <h2 className="result-title">{data.title || 'Untitled Conversation'}</h2>
-            </div>
-            <button className="copy-json-btn" onClick={handleCopyJson} title="Copy Raw JSON">
-              {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
-              <span>{copied ? 'Copied!' : 'Copy JSON'}</span>
+      {/* Sticky top: one solid group (title + stats + tabs) — stays put while the chat scrolls */}
+      <div className="result-topbar">
+        {/* Result Header */}
+        <div className="result-header">
+          <div className="result-title-group">
+            <span className={`platform-badge badge-${platformClass}`}>
+              {PLATFORM_LABELS[data.platform] || data.platform || 'AI'}
+            </span>
+            <h2 className="result-title">{data.title || 'Untitled Conversation'}</h2>
+          </div>
+          <button className="copy-json-btn" onClick={handleCopyJson} title="Copy Raw JSON">
+            {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+            <span>{copied ? 'Copied!' : 'Copy JSON'}</span>
+          </button>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="stats-grid">
+          <StatBox value={data.totalMessages ?? messages.length} label="Messages" icon={MessageSquare} colorClass="stat-blue" />
+          <StatBox value={data.wordCount ?? '—'} label="Words" icon={FileText} colorClass="stat-indigo" />
+          <StatBox value={data.promptCount ?? '—'} label="Prompts" icon={Zap} colorClass="stat-amber" />
+          <StatBox value={data.processingTimeLabel || formatDuration(data.processingTime)} label="Time" icon={Clock} colorClass="stat-emerald" />
+        </div>
+
+        {/* View Tabs */}
+        <div className="result-controls">
+          <div className="result-tabs">
+            <button
+              className={`result-tab ${view === 'visual' ? 'active' : ''}`}
+              onClick={() => setView('visual')}
+            >
+              <Sparkles size={14} />
+              Chat Preview
+            </button>
+            <button
+              className={`result-tab ${view === 'json' ? 'active' : ''}`}
+              onClick={() => setView('json')}
+            >
+              <Code2 size={14} />
+              Raw JSON
             </button>
           </div>
-
-          {/* Stats Grid */}
-          <div className="stats-grid">
-            <StatBox value={data.totalMessages ?? messages.length} label="Messages" icon={MessageSquare} colorClass="stat-blue" />
-            <StatBox value={data.wordCount ?? '—'} label="Words" icon={FileText} colorClass="stat-indigo" />
-            <StatBox value={data.promptCount ?? '—'} label="Prompts" icon={Zap} colorClass="stat-amber" />
-            <StatBox value={data.processingTimeLabel || formatDuration(data.processingTime)} label="Time" icon={Clock} colorClass="stat-emerald" />
-          </div>
-
-          {/* View Tabs */}
-          <div className="result-controls">
-            <div className="result-tabs">
-              <button
-                className={`result-tab ${view === 'visual' ? 'active' : ''}`}
-                onClick={() => setView('visual')}
-              >
-                <Sparkles size={14} />
-                Chat Preview
-              </button>
-              <button
-                className={`result-tab ${view === 'json' ? 'active' : ''}`}
-                onClick={() => setView('json')}
-              >
-                <Code2 size={14} />
-                Raw JSON
-              </button>
-            </div>
-          </div>
-
-          {/* Content View */}
-          {view === 'visual' ? (
-            messages.length > 0 ? (
-              <div className="messages-preview">
-                {messages.map((msg, i) => {
-                  const hasAttachments = Array.isArray(msg.attachments) && msg.attachments.length > 0;
-                  return (
-                    <div key={i} className={`message-bubble ${msg.role}${hasAttachments ? ' has-attachment' : ''}`}>
-                      <div className="message-header">
-                        <div className="avatar">
-                          {msg.role === 'user' ? <User size={13} /> : <Bot size={13} />}
-                        </div>
-                        <span className="message-role-name">
-                          {msg.role === 'user' ? 'User Prompt' : (PLATFORM_LABELS[data.platform] || 'AI Assistant')}
-                        </span>
-                      </div>
-                      {hasAttachments && (
-                        <div className="attachment-badge">
-                          {msg.attachments.includes('image') ? <ImageIcon size={13} /> : <Paperclip size={13} />}
-                          {msg.content}
-                        </div>
-                      )}
-                      {!hasAttachments && <div className="message-body">{msg.content}</div>}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <AlertCircle size={36} />
-                <p className="empty-title">No messages extracted</p>
-                <p className="empty-sub">
-                  The target conversation structure couldn't be parsed.
-                </p>
-              </div>
-            )
-          ) : (
-            <div className="json-container">
-              <pre className="json-viewer">{JSON.stringify(data, null, 2)}</pre>
-            </div>
-          )}
         </div>
+      </div>
+
+      {/* Scrollable content — chat history / JSON */}
+      <div className="result-content">
+        {view === 'visual' ? (
+          messages.length > 0 ? (
+            <div className="messages-preview">
+              {messages.map((msg, i) => {
+                const hasAttachments = Array.isArray(msg.attachments) && msg.attachments.length > 0;
+                return (
+                  <div key={i} className={`message-bubble ${msg.role}${hasAttachments ? ' has-attachment' : ''}`}>
+                    <div className="message-header">
+                      <div className="avatar">
+                        {msg.role === 'user' ? <User size={13} /> : <Bot size={13} />}
+                      </div>
+                      <span className="message-role-name">
+                        {msg.role === 'user' ? 'User Prompt' : (PLATFORM_LABELS[data.platform] || 'AI Assistant')}
+                      </span>
+                    </div>
+                    {hasAttachments && (
+                      <div className="attachment-badge">
+                        {msg.attachments.includes('image') ? <ImageIcon size={13} /> : <Paperclip size={13} />}
+                        {msg.content}
+                      </div>
+                    )}
+                    {!hasAttachments && <div className="message-body">{msg.content}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <AlertCircle size={36} />
+              <p className="empty-title">No messages extracted</p>
+              <p className="empty-sub">
+                The target conversation structure couldn't be parsed.
+              </p>
+            </div>
+          )
+        ) : (
+          <div className="json-container">
+            <pre className="json-viewer">{JSON.stringify(data, null, 2)}</pre>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -470,7 +467,17 @@ export default function App() {
                     <div className="error-msg" id="error-display">
                       <AlertCircle size={18} className="error-icon" />
                       <div>
-                        <strong>Extraction Gagal:</strong> {error}
+                        <strong>Extraction Failed:</strong> {error}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Success banner — below the Extract button once extraction is done */}
+                  {result && !error && (
+                    <div className="success-strip form-success" id="success-display">
+                      <CheckCircle2 size={18} />
+                      <div>
+                        <strong>Extraction successful!</strong> Found {result.totalMessages ?? result.messages?.length ?? 0} messages.
                       </div>
                     </div>
                   )}
@@ -486,9 +493,40 @@ export default function App() {
             ) : (
               <div className="card placeholder-card">
                 <div className="placeholder-content">
-                  <MessageSquareDashed size={44} className="placeholder-icon" />
-                  <h3>Ready to Extract</h3>
-                  <p>Masukkan API Key dan link shared percakapan AI pada form di sebelah kiri untuk menampilkan hasil ekstraksi di sini.</p>
+                  <div className="howto-header">
+                    <MessageSquareDashed size={34} className="placeholder-icon" />
+                    <h3>How to Use</h3>
+                    <p>Extract AI conversations in 3 easy steps.</p>
+                  </div>
+                  <ol className="howto-steps">
+                    <li className="howto-step">
+                      <div className="step-badge step-badge-blue">
+                        <Key size={16} />
+                      </div>
+                      <div className="step-text">
+                        <strong>Enter your API Key</strong>
+                        <p>Fill in the secret key in the form on the left.</p>
+                      </div>
+                    </li>
+                    <li className="howto-step">
+                      <div className="step-badge step-badge-green">
+                        <LinkIcon size={16} />
+                      </div>
+                      <div className="step-text">
+                        <strong>Paste the Share Link</strong>
+                        <p>A public conversation link from ChatGPT, Claude, or Gemini.</p>
+                      </div>
+                    </li>
+                    <li className="howto-step">
+                      <div className="step-badge step-badge-amber">
+                        <Download size={16} />
+                      </div>
+                      <div className="step-text">
+                        <strong>Click Extract</strong>
+                        <p>Structured JSON results + statistics appear here.</p>
+                      </div>
+                    </li>
+                  </ol>
                 </div>
               </div>
             )}
