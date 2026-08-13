@@ -132,10 +132,6 @@ function ResultView({ data }) {
             </span>
             <h2 className="result-title">{data.title || 'Untitled Conversation'}</h2>
           </div>
-          <button className="copy-json-btn" onClick={handleCopyJson} title="Copy Raw JSON">
-            {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
-            <span>{copied ? 'Copied!' : 'Copy JSON'}</span>
-          </button>
         </div>
 
         {/* Stats Grid */}
@@ -146,7 +142,7 @@ function ResultView({ data }) {
           <StatBox value={data.processingTimeLabel || formatDuration(data.processingTime)} label="Time" icon={Clock} colorClass="stat-emerald" />
         </div>
 
-        {/* View Tabs */}
+        {/* View Tabs + Copy JSON (right-aligned on the same row) */}
         <div className="result-controls">
           <div className="result-tabs">
             <button
@@ -164,6 +160,10 @@ function ResultView({ data }) {
               Raw JSON
             </button>
           </div>
+          <button className="copy-json-btn" onClick={handleCopyJson} title="Copy Raw JSON">
+            {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+            <span>{copied ? 'Copied!' : 'Copy JSON'}</span>
+          </button>
         </div>
       </div>
 
@@ -505,7 +505,6 @@ export default function App() {
                       </div>
                       <div className="step-text">
                         <strong>Enter your API Key</strong>
-                        <p>Fill in the secret key in the form on the left.</p>
                       </div>
                     </li>
                     <li className="howto-step">
@@ -514,7 +513,6 @@ export default function App() {
                       </div>
                       <div className="step-text">
                         <strong>Paste the Share Link</strong>
-                        <p>A public conversation link from ChatGPT, Claude, or Gemini.</p>
                       </div>
                     </li>
                     <li className="howto-step">
@@ -523,7 +521,6 @@ export default function App() {
                       </div>
                       <div className="step-text">
                         <strong>Click Extract</strong>
-                        <p>Structured JSON results + statistics appear here.</p>
                       </div>
                     </li>
                   </ol>
