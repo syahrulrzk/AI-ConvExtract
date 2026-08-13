@@ -6,8 +6,11 @@ import { authMiddleware } from '../middleware/auth.js';
 
 // Sync-mode (wait: true) limits. Waiting past these is risky for HTTP clients
 // (n8n's default request timeout is 5 min), so we fall back to async polling.
+// MAX is the ceiling for a single blocking request — set to 45 min so clients
+// like n8n can wait out long conversations in one request. Jobs that take
+// longer fall back to async polling via pollUrl (the job safety net is 1h).
 const DEFAULT_WAIT_TIMEOUT_MS = 5 * 60 * 1000; // 5 min
-const MAX_WAIT_TIMEOUT_MS = 10 * 60 * 1000; // 10 min
+const MAX_WAIT_TIMEOUT_MS = 45 * 60 * 1000; // 45 min
 
 const extractSchema = z.object({
   url: z.string().url(),

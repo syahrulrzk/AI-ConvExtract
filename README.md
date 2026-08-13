@@ -196,7 +196,7 @@ Tambahkan `"wait": true` di body kalau ingin satu request menunggu sampai ekstra
 }
 ```
 
-Jika ekstraksi gagal, response tetap `200` dengan `status: "failed"` + detail `error`. Jika job belum selesai dalam batas waktu tunggu (default **5 menit**, bisa diatur lewat `waitTimeoutMs`, maks **10 menit**), request **fallback ke `202`** dan mengembalikan `pollUrl` supaya hasilnya tetap bisa diambil via polling:
+Jika ekstraksi gagal, response tetap `200` dengan `status: "failed"` + detail `error`. Jika job belum selesai dalam batas waktu tunggu (default **5 menit**, bisa diatur lewat `waitTimeoutMs`, maks **45 menit**), request **fallback ke `202`** dan mengembalikan `pollUrl` supaya hasilnya tetap bisa diambil via polling:
 
 ```json
 {
@@ -209,7 +209,7 @@ Jika ekstraksi gagal, response tetap `200` dengan `status: "failed"` + detail `e
 }
 ```
 
-> **Catatan:** mode sinkron hanya disarankan untuk percakapan pendek-sedang. Percakapan **sangat panjang** bisa memakan waktu lama (budget collection hingga 50 menit) dan melewati timeout HTTP client — untuk itu tetap gunakan mode async + polling.
+> **Catatan:** `waitTimeoutMs` maksimal **45 menit** (satu request bisa menunggu percakapan panjang selesai). Pastikan timeout HTTP client (misal node HTTP Request n8n: *Options → Timeout*) di-set **lebih besar** dari `waitTimeoutMs` (misal 45 menit 15 detik) supaya balasan server masuk sebelum client memutus koneksi. Percakapan yang melewati 45 menit tetap fallback ke `202 + pollUrl` — untuk itu gunakan mode async + polling.
 
 ### 2. Polling Status Job
 **Endpoint:** `GET /api/v1/extract/jobs/:jobId`
