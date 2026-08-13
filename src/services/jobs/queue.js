@@ -1,4 +1,4 @@
-import { Queue, Worker } from 'bullmq';
+import { Queue, QueueEvents, Worker } from 'bullmq';
 import IORedis from 'ioredis';
 import { randomUUID } from 'node:crypto';
 import { env } from '../../config/env.js';
@@ -32,6 +32,10 @@ const connection = new IORedis(env.REDIS_URL, {
 });
 
 const extractQueue = new Queue('ai-converter-extract', { connection });
+
+// Event bridge used by waitForJob() to resolve the moment a job finishes
+// (instead of busy-polling), with an early check for already-finished jobs.
+const queueEvents = new QueueEvents('ai-converter-extract', { connection });
 
 let worker = null;
 
@@ -90,6 +94,36 @@ export async function getJob(jobId) {
   return payload;
 }
 
+const WAIT_TIMEOUT_PATTERN = 'timed out before finishing';
+
+/**
+ * Wait for a job to finish (synchronous / long-poll mode for callers like n8n
+ * that want one request to return the final result). Resolves with the same
+ * payload as getJob() once the job is done — or failed (job failures are
+ * surfaced in the payload, not thrown). Throws { code: 'WAIT_TIMEOUT' } if the
+ * job doesn't finish within timeoutMs, so the caller can fall back to the
+ * async pollUrl.
+ */
+export async function waitForJob(jobId, { timeoutMs } = {}) {
+  const job = await extractQueue.getJob(jobId);
+  if (!job) return null;
+
+  try {
+    await job.waitUntilFinished(queueEvents, timeoutMs);
+  } catch (err) {
+    // waitUntilFinished rejects both on wait-timeout and on job failure.
+    // Only a wait-timeout is an error here; job failures are returned as a
+    // payload below so the API can shape them consistently.
+    if (err.message && err.message.includes(WAIT_TIMEOUT_PATTERN)) {
+      const timeoutError = new Error(`Job did not finish within ${timeoutMs}ms`);
+      timeoutError.code = 'WAIT_TIMEOUT';
+      throw timeoutError;
+    }
+  }
+
+  return getJob(jobId);
+}
+
 /** Start the background worker (idempotent). */
 export async function startWorker() {
   if (worker) return worker;
@@ -144,5 +178,6 @@ export async function closeQueue() {
     worker = null;
   }
   await extractQueue.close();
+  await queueEvents.close();
   await connection.quit();
 }

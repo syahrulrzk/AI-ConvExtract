@@ -154,6 +154,63 @@ Ini otomatis menjalankan **Redis** + **app** (app menunggu Redis healthy). Aplik
 }
 ```
 
+#### Mode Sinkron (`wait: true`) — langsung dapat hasil, tanpa polling
+
+Tambahkan `"wait": true` di body kalau ingin satu request menunggu sampai ekstraksi selesai dan langsung menerima hasilnya (cocok untuk n8n / workflow sederhana):
+
+```json
+{
+  "url": "https://chatgpt.com/share/xxxxxx",
+  "wait": true
+}
+```
+
+**Response (200 OK) — hasil langsung, tanpa perlu polling:**
+```json
+{
+  "success": true,
+  "jobId": "4f1e2a3b-...",
+  "status": "done",
+  "url": "https://chatgpt.com/share/xxxxxx",
+  "createdAt": 1730000000000,
+  "startedAt": 1730000001000,
+  "finishedAt": 1730000123000,
+  "result": {
+    "success": true,
+    "url": "https://chatgpt.com/share/xxxxxx",
+    "platform": "chatgpt",
+    "title": "Judul Percakapan",
+    "messages": [
+      { "role": "user", "content": "..." },
+      { "role": "assistant", "content": "...", "attachments": ["image"] }
+    ],
+    "promptCount": 59,
+    "assistantCount": 59,
+    "totalMessages": 118,
+    "wordCount": 9897,
+    "characterCount": 80337,
+    "processingTime": 127580,
+    "processingTimeLabel": "2m 8s",
+    "truncated": false
+  }
+}
+```
+
+Jika ekstraksi gagal, response tetap `200` dengan `status: "failed"` + detail `error`. Jika job belum selesai dalam batas waktu tunggu (default **5 menit**, bisa diatur lewat `waitTimeoutMs`, maks **10 menit**), request **fallback ke `202`** dan mengembalikan `pollUrl` supaya hasilnya tetap bisa diambil via polling:
+
+```json
+{
+  "success": true,
+  "jobId": "4f1e2a3b-...",
+  "status": "running",
+  "url": "https://chatgpt.com/share/xxxxxx",
+  "pollUrl": "/api/v1/extract/jobs/4f1e2a3b-...",
+  "note": "Job not finished within 300000ms — poll pollUrl to retrieve the result."
+}
+```
+
+> **Catatan:** mode sinkron hanya disarankan untuk percakapan pendek-sedang. Percakapan **sangat panjang** bisa memakan waktu lama (budget collection hingga 50 menit) dan melewati timeout HTTP client — untuk itu tetap gunakan mode async + polling.
+
 ### 2. Polling Status Job
 **Endpoint:** `GET /api/v1/extract/jobs/:jobId`
 
@@ -270,7 +327,9 @@ Copy JSON di bawah ini dan paste langsung ke canvas n8n Anda untuk membuat HTTP 
 }
 ```
 
-> **Untuk n8n:** karena ekstraksi async, ambil `jobId` dari response lalu polling `GET /api/v1/extract/jobs/:jobId` (misal dengan `Wait` node tiap 2-5 detik) sampai `status: "done"`, baru lanjut ke AI Agent processing.
+> **Untuk n8n (cara simpel):** pakai `wait: true` di body request — satu HTTP Request node langsung menerima hasil final (`status: "done"` + `result`) tanpa perlu node polling. Kalau response-nya berisi `pollUrl` (job belum selesai dalam batas waktu tunggu), lanjutkan dengan polling `GET /api/v1/extract/jobs/:jobId` (misal `Wait` node tiap 2-5 detik) sampai `status: "done"`.
+>
+> **Untuk n8n (percakapan sangat panjang):** ekstraksi async tetap lebih aman — ambil `jobId` dari response lalu polling `GET /api/v1/extract/jobs/:jobId` (misal dengan `Wait` node tiap 2-5 detik) sampai `status: "done"`, baru lanjut ke AI Agent processing.
 
 **Alur Rekomendasi (Sesuai Gambar):**
 1. **Trigger:** `Execute workflow` / Jadwal.
