@@ -185,29 +185,47 @@ async function extractChatWithPuppeteer(url, signal) {
 }
 
 /**
- * Runs Playwright + Puppeteer in parallel and returns the result of whichever
- * engine collected the MOST messages. This hedges against lazy-render
- * variance: occasionally an engine misses a turn, so the fuller result (the
- * "correct" one) wins.
+ * Try Playwright first. Puppeteer is a fallback for failed, empty, or
+ * truncated results; complete Playwright results avoid a second browser run.
  */
 async function extractChatDualEngine(url, signal) {
-  const [pwResult, ppResult] = await Promise.allSettled([
-    extractChatWithPlaywright(url, signal),
-    extractChatWithPuppeteer(url, signal),
-  ]);
-
   const candidates = [];
+  let pwResult;
 
-  if (pwResult.status === 'fulfilled') {
+  try {
+    pwResult = { status: 'fulfilled', value: await extractChatWithPlaywright(url, signal) };
     candidates.push({ engine: 'playwright', result: pwResult.value });
-  } else {
+  } catch (error) {
+    pwResult = { status: 'rejected', reason: error };
     logger.warn({ error: pwResult.reason?.message }, 'Playwright engine failed');
   }
 
-  if (ppResult.status === 'fulfilled') {
+  const pwCandidate = candidates[0];
+  if (pwCandidate && pwCandidate.result.messages.length > 0 && !pwCandidate.result.truncated) {
+    logger.info(
+      { engine: 'playwright', messageCount: pwCandidate.result.messages.length },
+      'Playwright result complete; skipping Puppeteer fallback'
+    );
+    return pwCandidate.result;
+  }
+
+  if (signal?.aborted) throw abortError();
+
+  logger.info(
+    {
+      messageCount: pwCandidate?.result.messages.length ?? 0,
+      truncated: !!pwCandidate?.result.truncated,
+    },
+    'Playwright result incomplete; trying Puppeteer fallback'
+  );
+
+  let ppResult;
+  try {
+    ppResult = { status: 'fulfilled', value: await extractChatWithPuppeteer(url, signal) };
     candidates.push({ engine: 'puppeteer', result: ppResult.value });
-  } else {
-    logger.warn({ error: ppResult.reason?.message }, 'Puppeteer engine failed');
+  } catch (error) {
+    ppResult = { status: 'rejected', reason: error };
+    logger.warn({ error: ppResult.reason?.message }, 'Puppeteer fallback failed');
   }
 
   if (candidates.length === 0) {
@@ -237,7 +255,7 @@ async function extractChatDualEngine(url, signal) {
 
   logger.info(
     { chosenEngine: best.engine, messageCount: bestCount },
-    'Dual-engine extraction complete'
+    'ChatGPT extraction complete'
   );
 
   // If the chosen engine ran out of time but the other is complete, prefer the

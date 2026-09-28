@@ -54,14 +54,30 @@ export default async function extractRoutes(fastify, options) {
     const parseResult = extractSchema.safeParse(request.body);
     if (!parseResult.success) {
       reply.status(400);
-      return { success: false, error: { code: 'INVALID_REQUEST', message: parseResult.error.errors } };
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: parseResult.error.errors,
+          reason: 'Provide url as a full public share link from ChatGPT, Claude, or Gemini.',
+          retryable: false,
+        },
+      };
     }
 
     const { url, wait, waitTimeoutMs } = parseResult.data;
     const platform = detectPlatform(url);
     if (platform === PLATFORMS.UNKNOWN) {
       reply.status(400);
-      return { success: false, error: { code: 'UNSUPPORTED_PLATFORM', message: 'Platform not supported yet.' } };
+      return {
+        success: false,
+        error: {
+          code: 'UNSUPPORTED_PLATFORM',
+          message: 'Platform not supported yet.',
+          reason: 'The URL host is not a supported public share link from ChatGPT, Claude, or Gemini.',
+          retryable: false,
+        },
+      };
     }
 
     const job = await createJob(url);
@@ -123,7 +139,15 @@ export default async function extractRoutes(fastify, options) {
     const parseResult = batchExtractSchema.safeParse(request.body);
     if (!parseResult.success) {
       reply.status(400);
-      return { success: false, error: { code: 'INVALID_REQUEST', message: parseResult.error.errors } };
+      return {
+        success: false,
+        error: {
+          code: 'INVALID_REQUEST',
+          message: parseResult.error.errors,
+          reason: 'Provide urls as full public share links from ChatGPT, Claude, or Gemini.',
+          retryable: false,
+        },
+      };
     }
 
     const { urls, wait, waitTimeoutMs } = parseResult.data;
@@ -132,7 +156,16 @@ export default async function extractRoutes(fastify, options) {
     const jobs = await Promise.all(urls.map(async (url) => {
       const platform = detectPlatform(url);
       if (platform === PLATFORMS.UNKNOWN) {
-        return { url, success: false, error: { code: 'UNSUPPORTED_PLATFORM', message: 'Platform not supported yet.' } };
+        return {
+          url,
+          success: false,
+          error: {
+            code: 'UNSUPPORTED_PLATFORM',
+            message: 'Platform not supported yet.',
+            reason: 'The URL host is not a supported public share link from ChatGPT, Claude, or Gemini.',
+            retryable: false,
+          },
+        };
       }
       const job = await createJob(url);
 
