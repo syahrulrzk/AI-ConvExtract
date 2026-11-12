@@ -31,6 +31,7 @@ export async function extractClaude(page) {
   try {
     await page.waitForSelector(
       '[data-testid="human-turn"], [data-testid="ai-turn"], ' +
+      '[data-testid="assistant-message"], [class*="message-row"], ' +
       '.font-claude-message, article',
       { timeout: 20000 }
     );
@@ -71,6 +72,37 @@ export async function extractClaude(page) {
 
     const messages = [];
 
+    // Current Claude share pages expose each turn as a message-row. The
+    // speaker label is an sr-only h3, while assistant content lives in the
+    // assistant-message markdown container. Prefer this structured path so
+    // tool labels, timestamps, and nested prose nodes are not duplicated.
+    const currentRows = Array.from(document.querySelectorAll('[class*="message-row"]'));
+    for (const row of currentRows) {
+      const label = row.querySelector('h3')?.innerText?.trim() || '';
+      if (/^You said:/i.test(label)) {
+        const content = label.replace(/^You said:\s*/i, '').trim();
+        if (content) messages.push({ role: 'user', content });
+        continue;
+      }
+
+      if (/^Claude responded:/i.test(label)) {
+        const assistant = row.querySelector('[data-testid="assistant-message"]');
+        // The prose node contains only the response. The surrounding
+        // standard-markdown node also contains tool labels such as "Read a
+        // page", so use it only when a prose node is unavailable.
+        const blocks = Array.from(assistant?.querySelectorAll('[class*="prose"]') || []);
+        if (blocks.length === 0 && assistant) {
+          blocks.push(...assistant.querySelectorAll('[class*="standard-markdown"]'));
+        }
+        const content = blocks.length > 0
+          ? blocks.map((el) => el.innerText?.trim()).filter(Boolean).join('\n\n')
+          : assistant?.innerText?.trim() || '';
+        if (content) messages.push({ role: 'assistant', content });
+      }
+    }
+
+    // ── Legacy strategies for older Claude share page markup ──
+    if (messages.length === 0) {
     // ── Strategy 1: data-testid (Claude's actual share page attributes) ──
     const humanEls = keepOutermost(Array.from(document.querySelectorAll('[data-testid="human-turn"]')));
     const aiEls    = keepOutermost(Array.from(document.querySelectorAll('[data-testid="ai-turn"]')));
@@ -192,6 +224,7 @@ export async function extractClaude(page) {
           messages.push({ role: idx % 2 === 0 ? 'user' : 'assistant', content });
         }
       });
+    }
     }
 
     // Deduplicate to remove substring-duplicates from nested element matching

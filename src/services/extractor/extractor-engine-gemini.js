@@ -12,18 +12,17 @@ export async function extractGemini(page) {
 
   // Wait for the conversation content to appear
   try {
-    await page.waitForSelector(
-      '[data-turn-role], [class*="conversation"], [class*="message"], ' +
-      'model-response, user-query, .model-response, .user-query, ' +
-      '[class*="turn"], [class*="Turn"]',
+    await page.waitForFunction(() =>
+      Boolean(document.querySelector('[data-turn-role]')) ||
+      (document.body?.innerText || '').includes('You said'),
       { timeout: 15000 }
     );
   } catch (e) {
     logger.warn('Gemini: Timeout waiting for message selectors, trying to extract anyway');
   }
 
-  // Extra buffer for Angular/React hydration
-  await page.waitForTimeout(2500);
+  // Short buffer for the final Angular/React hydration pass.
+  await page.waitForTimeout(500);
 
   // Get full page text for debugging
   const fullPageText = await page.evaluate(() => document.body?.innerText || '');
