@@ -35,10 +35,10 @@ export function parseChatGPT(html) {
   const $ = cheerio.load(html);
   const messages = [];
 
-  // Assuming ChatGPT shared conversations have divs with data-message-author-role
-  // We may need to refine the selector based on the exact DOM of ChatGPT share links.
-  $('[data-message-author-role]').each((_, el) => {
-    const role = $(el).attr('data-message-author-role');
+  // ChatGPT currently uses data-message-role on conversation <li>s. Older
+  // share pages used data-message-author-role on message wrappers.
+  $('[data-message-author-role], [data-message-role]').each((_, el) => {
+    const role = $(el).attr('data-message-author-role') || $(el).attr('data-message-role');
     // Extract text content. In reality, we might want markdown or structured text.
     const raw = $(el).text().trim();
 

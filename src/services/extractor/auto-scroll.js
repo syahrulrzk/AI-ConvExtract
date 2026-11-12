@@ -80,8 +80,12 @@ export async function collectChatMessages(page, signal) {
   if (!container) {
     logger.warn('No scrollable container found on ChatGPT share page');
     const raw = await page.evaluate(() =>
-      Array.from(document.querySelectorAll('[data-message-author-role]'))
-        .map((el) => ({ role: el.getAttribute('data-message-author-role'), content: el.textContent.trim() }))
+      Array.from(document.querySelectorAll('[data-message-author-role], [data-message-role]'))
+        .filter((el) => el.hasAttribute('data-message-author-role') || el.hasAttribute('data-message-role'))
+        .map((el) => ({
+          role: el.getAttribute('data-message-author-role') || el.getAttribute('data-message-role'),
+          content: el.textContent.trim(),
+        }))
     );
     return { messages: snapshotToMessages(raw), truncated: false };
   }
@@ -107,7 +111,10 @@ export async function collectChatMessages(page, signal) {
 
   const snapshot = async () => {
     const data = await page.evaluate(() => {
-      const els = Array.from(document.querySelectorAll('[data-message-author-role]'));
+      // ChatGPT currently uses data-message-role on conversation <li>s;
+      // older share pages used data-message-author-role on message wrappers.
+      const els = Array.from(document.querySelectorAll('[data-message-author-role], [data-message-role]'))
+        .filter((el) => el.hasAttribute('data-message-author-role') || el.hasAttribute('data-message-role'));
       const outer = els.filter((el) => !els.some((o) => o !== el && o.contains(el)));
       const root = document.querySelector('[data-__chat-scroll-root="1"]');
       return {
@@ -121,11 +128,12 @@ export async function collectChatMessages(page, signal) {
           while (node) {
             const tid = node.getAttribute && node.getAttribute('data-testid');
             if (tid && /^conversation-turn-\d+$/.test(tid)) { id = tid; break; }
+            if (!id && node.id) id = node.id;
             node = node.parentElement;
           }
           return {
             id,
-            role: el.getAttribute('data-message-author-role'),
+            role: el.getAttribute('data-message-author-role') || el.getAttribute('data-message-role'),
             content: el.textContent.trim(),
           };
         }),
