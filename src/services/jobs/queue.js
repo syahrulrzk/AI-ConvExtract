@@ -39,24 +39,58 @@ const queueEvents = new QueueEvents('ai-converter-extract', { connection });
 
 let worker = null;
 
+function withTimeout(promise, ms, message) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const err = new Error(message || `Operation timed out after ${ms}ms`);
+      err.code = 'REDIS_UNAVAILABLE';
+      reject(err);
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+}
+
+async function ensureRedisReady() {
+  if (connection.status === 'ready') return;
+  try {
+    await withTimeout(connection.ping(), 1500, 'Redis is not reachable (ping timed out)');
+  } catch (err) {
+    const wrapped = new Error('Redis queue backend is not reachable');
+    wrapped.code = 'REDIS_UNAVAILABLE';
+    wrapped.cause = err;
+    throw wrapped;
+  }
+}
+
 /** Submit an extraction job. Returns { id, url, status: 'queued' }. */
 export async function createJob(url) {
+  await ensureRedisReady();
   const jobId = randomUUID();
-  await extractQueue.add(
-    'extract',
-    { url },
-    {
-      jobId,
-      removeOnComplete: { age: JOB_RETENTION_SECONDS },
-      removeOnFail: { age: JOB_RETENTION_SECONDS },
-    }
+  await withTimeout(
+    extractQueue.add(
+      'extract',
+      { url },
+      {
+        jobId,
+        removeOnComplete: { age: JOB_RETENTION_SECONDS },
+        removeOnFail: { age: JOB_RETENTION_SECONDS },
+      }
+    ),
+    5000,
+    'Redis queue backend is not reachable (add timed out)'
   );
   return { id: jobId, url, status: 'queued' };
 }
 
 /** Map a BullMQ job to the API-facing job payload. Returns null if not found. */
 export async function getJob(jobId) {
-  const job = await extractQueue.getJob(jobId);
+  await ensureRedisReady();
+  const job = await withTimeout(
+    extractQueue.getJob(jobId),
+    3000,
+    'Redis queue backend is not reachable (getJob timed out)'
+  );
   if (!job) return null;
 
   const state = await job.getState();
@@ -105,6 +139,7 @@ const WAIT_TIMEOUT_PATTERN = 'timed out before finishing';
  * async pollUrl.
  */
 export async function waitForJob(jobId, { timeoutMs } = {}) {
+  await ensureRedisReady();
   const job = await extractQueue.getJob(jobId);
   if (!job) return null;
 
@@ -127,6 +162,7 @@ export async function waitForJob(jobId, { timeoutMs } = {}) {
 /** Start the background worker (idempotent). */
 export async function startWorker() {
   if (worker) return worker;
+  await ensureRedisReady();
 
   worker = new Worker(
     'ai-converter-extract',

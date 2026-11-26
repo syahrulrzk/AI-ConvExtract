@@ -3,6 +3,7 @@ import { detectPlatform } from '../services/platform-detector.js';
 import { PLATFORMS } from '../constants/platforms.js';
 import { createJob, getJob, waitForJob } from '../services/jobs/queue.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { validateShareUrl } from '../services/share-url-validator.js';
 
 // Sync-mode (wait: true) limits. Waiting past these is risky for HTTP clients
 // (n8n's default request timeout is 5 min), so we fall back to async polling.
@@ -80,7 +81,30 @@ export default async function extractRoutes(fastify, options) {
       };
     }
 
-    const job = await createJob(url);
+    const validation = validateShareUrl(url, platform);
+    if (!validation.ok) {
+      reply.status(400);
+      return { success: false, error: validation.error };
+    }
+
+    let job;
+    try {
+      job = await createJob(url);
+    } catch (err) {
+      if (err.code === 'REDIS_UNAVAILABLE') {
+        reply.status(503);
+        return {
+          success: false,
+          error: {
+            code: 'REDIS_UNAVAILABLE',
+            message: 'Redis queue backend is not reachable.',
+            reason: 'Start Redis and ensure REDIS_URL is reachable from the server.',
+            retryable: true,
+          },
+        };
+      }
+      throw err;
+    }
 
     if (wait) {
       const timeoutMs = waitTimeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS;
@@ -123,7 +147,24 @@ export default async function extractRoutes(fastify, options) {
   // Poll a job's status.
   fastify.get('/extract/jobs/:jobId', async (request, reply) => {
     const { jobId } = request.params;
-    const job = await getJob(jobId);
+    let job;
+    try {
+      job = await getJob(jobId);
+    } catch (err) {
+      if (err.code === 'REDIS_UNAVAILABLE') {
+        reply.status(503);
+        return {
+          success: false,
+          error: {
+            code: 'REDIS_UNAVAILABLE',
+            message: 'Redis queue backend is not reachable.',
+            reason: 'Start Redis and ensure REDIS_URL is reachable from the server.',
+            retryable: true,
+          },
+        };
+      }
+      throw err;
+    }
 
     if (!job) {
       reply.status(404);
@@ -167,7 +208,29 @@ export default async function extractRoutes(fastify, options) {
           },
         };
       }
-      const job = await createJob(url);
+      const validation = validateShareUrl(url, platform);
+      if (!validation.ok) {
+        return { url, success: false, error: validation.error };
+      }
+
+      let job;
+      try {
+        job = await createJob(url);
+      } catch (err) {
+        if (err.code === 'REDIS_UNAVAILABLE') {
+          return {
+            url,
+            success: false,
+            error: {
+              code: 'REDIS_UNAVAILABLE',
+              message: 'Redis queue backend is not reachable.',
+              reason: 'Start Redis and ensure REDIS_URL is reachable from the server.',
+              retryable: true,
+            },
+          };
+        }
+        throw err;
+      }
 
       if (wait) {
         try {

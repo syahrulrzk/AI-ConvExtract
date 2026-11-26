@@ -63,6 +63,8 @@ User ──GET /api/v1/extract/jobs/:id──▶ { status: "done", result: {...}
    ```bash
    docker compose up -d redis
    ```
+   Default host port Redis sekarang `6380` (biar gak bentrok sama Redis lain).
+   Kalau mau ganti, set `REDIS_HOST_PORT` dan sesuaikan `REDIS_URL` di `.env`.
 6. Jalankan server backend (dengan hot-reload):
    ```bash
    npm run dev
@@ -76,7 +78,8 @@ Aplikasi dan Dashboard kini bisa diakses melalui `http://localhost:3100` (atau I
 |---|---|---|
 | `PORT` | `3100` | Port server |
 | `API_KEY` | `ai-converter-secret-key-123` | API key untuk otentikasi |
-| `REDIS_URL` | `redis://localhost:6379` | Koneksi Redis untuk job queue |
+| `REDIS_URL` | `redis://localhost:6380` | Koneksi Redis untuk job queue |
+| `REDIS_HOST_PORT` | `6380` | (Opsional, Docker Compose) Host port untuk container Redis |
 | `APP_VERSION` | `V.0.1` | Versi aplikasi yang ditampilkan di footer dashboard (bisa diubah per deployment) |
 | `EXTRACT_JOB_TIMEOUT_MS` | `3600000` (1 jam) | Batas maksimal waktu satu job sebelum di-abort (jaring pengaman anti-hang) |
 | `EXTRACT_COLLECT_TIMEOUT_MS` | `120000` (2 menit) | Budget dasar collection per halaman |
