@@ -18,7 +18,7 @@ RUN npm run build
 # IMPORTANT: this base image version MUST match the `playwright` version in
 # package.json. The image ships preinstalled browsers at /ms-playwright, so
 # matching versions means no browser download and a working extract feature.
-FROM mcr.microsoft.com/playwright:v1.62.1-noble
+FROM mcr.microsoft.com/playwright:v1.65.1-noble
 
 WORKDIR /app
 
